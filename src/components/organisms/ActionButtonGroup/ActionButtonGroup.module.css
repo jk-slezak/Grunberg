@@ -1,0 +1,12 @@
+.action-button-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+@media (min-width: 768px) {
+  .action-button-group {
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  }
+}

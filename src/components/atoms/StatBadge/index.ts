@@ -1,0 +1,1 @@
+export { StatBadge } from "./StatBadge";

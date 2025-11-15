@@ -1,0 +1,19 @@
+.currency-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--secondary-gold-lighter);
+  border-radius: 4px;
+  border: 1px solid var(--secondary-gold-light);
+}
+
+.currency-display__icon {
+  font-size: 20px;
+}
+
+.currency-display__amount {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--secondary-gold);
+}

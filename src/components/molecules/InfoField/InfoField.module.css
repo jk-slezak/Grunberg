@@ -1,0 +1,10 @@
+.info-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-field__value {
+  font-size: 14px;
+  font-weight: 500;
+}

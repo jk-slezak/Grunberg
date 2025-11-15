@@ -1,0 +1,25 @@
+.label {
+  color: var(--text-disabled);
+  display: inline-block;
+}
+
+.label--small {
+  font-size: 10px;
+}
+
+.label--medium {
+  font-size: 12px;
+}
+
+.label--large {
+  font-size: 14px;
+}
+
+.label--uppercase {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.label--default {
+  text-transform: none;
+}

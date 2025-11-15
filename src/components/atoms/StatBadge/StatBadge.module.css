@@ -1,0 +1,20 @@
+.stat-badge {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(15, 20, 25, 0.5);
+  border-radius: 4px;
+  border: 1px solid var(--border-secondary);
+}
+
+.stat-badge__label {
+  font-size: 10px;
+  color: var(--text-disabled);
+  text-transform: uppercase;
+}
+
+.stat-badge__value {
+  font-size: 18px;
+  font-weight: bold;
+}
