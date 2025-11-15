@@ -1,0 +1,36 @@
+.status-bar {
+  margin-bottom: 12px;
+}
+
+.status-bar:last-child {
+  margin-bottom: 0;
+}
+
+.status-bar__header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.status-bar__values {
+  color: var(--text-secondary);
+  font-weight: bold;
+}
+
+.status-bar__track {
+  height: 8px;
+  background: var(--background-paper-dark);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border-secondary);
+}
+
+.status-bar__fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px currentColor;
+}
+
+
+

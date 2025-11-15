@@ -1,6 +1,80 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+:root {
+  /* Accent Colors */
+  --primary-accent: #6c63ff;
+  --primary-accent-light: rgba(108, 99, 255, 0.15);
+  --primary-accent-lighter: rgba(108, 99, 255, 0.1);
+  --primary-accent-dark: #5a52d5;
+  --primary-accent-darker: #4842b5;
+
+  /* Secondary Colors */
+  --secondary-gold: #ffd700;
+  --secondary-gold-light: rgba(255, 215, 0, 0.3);
+  --secondary-gold-lighter: rgba(255, 215, 0, 0.1);
+
+  /* Background Colors */
+  --background-main: #1a1a2e;
+  --background-paper: #16213e;
+  --background-paper-light: #1e1e3f;
+  --background-paper-dark: #0f1419;
+  --background-layout: #0f0f1e;
+  --background-overlay: rgba(0, 0, 0, 0.7);
+  --background-glass: rgba(22, 33, 62, 0.95);
+  --background-glass-light: rgba(22, 33, 62, 0.5);
+
+  /* Text Colors */
+  --text-primary: #eee;
+  --text-secondary: #e0e0e0;
+  --text-tertiary: #9ca3af;
+  --text-disabled: #888;
+  --text-hint: #666;
+  --text-inverted: #333;
+  --text-action-success: #a8e6a3;
+  --text-dialogue: #ffd54f;
+
+  /* Border Colors */
+  --border-primary: #3a3a5a;
+  --border-secondary: #2a3a5a;
+  --border-interactive: #6c63ff;
+  --border-success: #4caf50;
+  --border-warning: #ffc107;
+  --border-system: #888;
+
+  /* Status Colors */
+  --status-error: #ff4444;
+  --status-cooldown: #ff6b6b;
+
+  /* Transparent Colors */
+  --white-t-5: rgba(255, 255, 255, 0.05);
+  --white-t-3: rgba(255, 255, 255, 0.03);
+  --white-t-87: rgba(255, 255, 255, 0.87);
+  --black-t-15: rgba(0, 0, 0, 0.15);
+
+  /* Map Colors */
+  --map-wall: #2a3a5a;
+  --map-explored: #3a4a6a;
+  --map-unexplored: #1a1a2e;
+  --map-player: #ffd700;
+  --map-player-glow: rgba(255, 215, 0, 0.6);
+}
+
+.app {
+  width: 100%;
+  height: 100%;
+  background: var(--background-main);
+  color: var(--text-primary);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }

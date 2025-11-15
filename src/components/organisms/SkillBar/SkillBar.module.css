@@ -1,0 +1,13 @@
+.skill-bar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 4px;
+  padding: 4px;
+}
+
+.skill-bar__skills {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}

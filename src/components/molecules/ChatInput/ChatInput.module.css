@@ -1,0 +1,5 @@
+.chat-input {
+  padding: 16px;
+  background: var(--background-paper-dark);
+  border-top: 1px solid var(--border-secondary);
+}
