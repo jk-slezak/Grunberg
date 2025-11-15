@@ -1,0 +1,76 @@
+---
+alwaysApply: true
+---
+
+Stosujemy Atomic Design z kolokacją i barrel pattern. To podejście, które łączy kilka dobrych praktyk, ale wymaga świadomego zarządzania, by nie wprowadzić zbyt dużej złożoności.
+
+### Jak to połączyć?
+
+1. **Atomic Design**: Organizujesz komponenty według poziomów abstrakcji:
+   - atoms/ (np. Button, Input)
+   - molecules/ (np. FormField, SearchBar)
+   - organisms/ (np. Header, Footer)
+   - templates/ (np. PageLayout)
+
+2. **Kolokacja**: W każdym komponencie trzymasz razem:
+   - plik z kodem (`Button.tsx`)
+   - plik stylów (`Button.module.css`)
+   - testy (`Button.test.tsx`)
+   - ewentualne storybooki (`Button.stories.tsx`)
+
+3. **Barrel pattern**: W folderze każdego poziomu (np. `atoms/`) normalnie masz plik `index.ts`, który zbiera i eksportuje wszystkie komponenty jako publiczne API tej warstwy. Przykład:
+
+```
+src/
+├── components/
+│   ├── atoms/
+│   │   ├── Button/
+│   │   │   ├── Button.tsx
+│   │   │   ├── Button.module.css
+│   │   │   ├── Button.test.tsx
+│   │   │   └── index.ts  (eksportuje Button) <-- to robimy.
+│   │   ├── Input/
+│   │   │   └── index.ts  (eksportuje Input)
+│   │   └── index.ts  (eksportuje { Button, Input } z podfolderów) <-- tego nie robimy, za duży eksport.
+│   ├── molecules/
+│   │   └── index.ts <-- tego nie robimy, za duży eksport.
+│   └── organisms/
+│       └── index.ts <-- tego nie robimy, za duży eksport.
+```
+
+MY JEDNAK TEGO NIE ROBIMY W KATALOGACH ATOMS, MOLECULES, ORGANISMS. ZA DUŻE EKSPORTY. EKSPORT W KATALOGU KOMPONENTU WYSTARCZY ZUPEŁNIE.
+
+W pliku `index.ts` każdego komponentu dajesz:
+
+```ts
+export { default } from "./Button";
+```
+
+Natomiast w `atoms/index.ts`:
+
+```ts
+export { default as Button } from "./Button";
+export { default as Input } from "./Input";
+```
+
+### Zalety takiego podejścia:
+
+- **Jasna hierarchia Atomic Design** pokazuje strukturę UI od podstawowych elementów do złożonych.
+- **Kolokacja** upraszcza utrzymanie każdego komponentu na jednym miejscu.
+- **Barrel pattern** upraszcza importy na wyższych poziomach, m.in. w całej aplikacji:
+
+```ts
+import { Button, Input } from "components/atoms";
+```
+
+### Wady i ryzyka:
+
+- Barrel pattern może wprowadzać problemy z tree shaking (powiększony bundle) jeśli nie jest starannie zarządzany.
+- Ryzyko pętli zależności, zwłaszcza przy dużych projektach z wieloma barrelami.
+- Skuteczne wymaga dyscypliny, żeby exportować tylko to, co jest potrzebne i mieć reguły w zespole dotyczące kolokacji i eksportów.
+
+Doradź, jeśli to możliwe, jak można to zarządzać, by nie wprowadzić zbyt dużej złożoności.
+
+### Podsumowanie:
+
+Atomic Design + kolokacja + barrel pattern to efektywna, czytelna struktura, szczególnie dobra dla większych, dobrze zarządzanych projektów UI i design systemów — ale wymaga dbałości o jakość eksportów i unikania nadmiaru dependencji.
