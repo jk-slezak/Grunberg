@@ -1,7 +1,13 @@
 import { useState } from "react";
-import type { Character, Race, CharacterStats } from "../types/character";
+import type {
+  Character,
+  Race,
+  CharacterStats,
+  CharacterClass,
+} from "../types/character";
 import {
   RACES,
+  RACE_BASE_STATS,
   INITIAL_STAT_POINTS,
   MIN_STAT_VALUE,
   MAX_STAT_VALUE,
@@ -17,11 +23,10 @@ export default function CharacterCreator({
 }: CharacterCreatorProps) {
   const [name, setName] = useState("");
   const [race, setRace] = useState<Race>("Human");
-  const [stats, setStats] = useState<CharacterStats>({
-    strength: 5,
-    agility: 5,
-    intelligence: 5,
-  });
+  const [gender, setGender] = useState<boolean>(true);
+  const [characterClass, setCharacterClass] =
+    useState<CharacterClass>("Warrior");
+  const [stats, setStats] = useState<CharacterStats>(RACE_BASE_STATS.Human);
 
   const totalPoints = stats.strength + stats.agility + stats.intelligence;
   const remainingPoints = INITIAL_STAT_POINTS - totalPoints;
@@ -46,10 +51,21 @@ export default function CharacterCreator({
     }
   };
 
+  const handleRaceChange = (newRace: Race) => {
+    setRace(newRace);
+    setStats(RACE_BASE_STATS[newRace]);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim() && remainingPoints === 0) {
-      onCharacterCreated({ name: name.trim(), race, stats });
+      onCharacterCreated({
+        name: name.trim(),
+        race,
+        gender,
+        class: characterClass,
+        stats,
+      });
     }
   };
 
@@ -79,9 +95,45 @@ export default function CharacterCreator({
                 key={r}
                 type="button"
                 className={`race-button ${race === r ? "selected" : ""}`}
-                onClick={() => setRace(r)}
+                onClick={() => handleRaceChange(r)}
               >
                 {r}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="form-section">
+          <label>Gender:</label>
+          <div className="race-selection">
+            <button
+              type="button"
+              className={`race-button ${gender ? "selected" : ""}`}
+              onClick={() => setGender(true)}
+            >
+              Male
+            </button>
+            <button
+              type="button"
+              className={`race-button ${!gender ? "selected" : ""}`}
+              onClick={() => setGender(false)}
+            >
+              Female
+            </button>
+          </div>
+        </div>
+
+        <div className="form-section">
+          <label>Class:</label>
+          <div className="race-selection">
+            {(["Warrior", "Rogue", "Mage"] as CharacterClass[]).map((cls) => (
+              <button
+                key={cls}
+                type="button"
+                className={`race-button ${characterClass === cls ? "selected" : ""}`}
+                onClick={() => setCharacterClass(cls)}
+              >
+                {cls}
               </button>
             ))}
           </div>
