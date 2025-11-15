@@ -18,6 +18,8 @@ function App() {
     <div>
       <h1>Welcome, {character.name}!</h1>
       <p>Race: {character.race}</p>
+      <p>Gender: {character.gender ? "Male" : "Female"}</p>
+      <p>Class: {character.class}</p>
       <p>Strength: {character.stats.strength}</p>
       <p>Agility: {character.stats.agility}</p>
       <p>Intelligence: {character.stats.intelligence}</p>
