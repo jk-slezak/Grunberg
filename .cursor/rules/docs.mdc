@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+
+All features plan and way of implementation should be documented in docs folder.
+
+Read @docs/game-description.md for more information about game description.
+Read @docs/architecture.md for more information about architecture.
