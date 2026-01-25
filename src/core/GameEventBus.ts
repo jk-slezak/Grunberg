@@ -39,8 +39,16 @@ export interface GameEventData {
   QUEST_STARTED: { questId: string };
   QUEST_COMPLETED: { questId: string; rewards: Record<string, unknown> };
   QUEST_FAILED: { questId: string };
-  QUEST_PROGRESS_UPDATED: { questId: string; componentId: string; progress: number };
-  ENEMY_DEFEATED: { enemyType: string; enemyId: string; location: { floor: number; x: number; y: number } };
+  QUEST_PROGRESS_UPDATED: {
+    questId: string;
+    componentId: string;
+    progress: number;
+  };
+  ENEMY_DEFEATED: {
+    enemyType: string;
+    enemyId: string;
+    location: { floor: number; x: number; y: number };
+  };
   LOCATION_REACHED: { locationId: string; floor: number; x: number; y: number };
   NPC_TALKED: { npcId: string };
   DIALOGUE_STARTED: { npcId: string; dialogueId: string };
@@ -76,17 +84,19 @@ class GameEventBus {
 
   public on<T extends GameEventType>(
     eventType: T,
-    callback: EventCallback<T>
+    callback: EventCallback<T>,
   ): void {
     if (!this.listeners.has(eventType)) {
       this.listeners.set(eventType, new Set());
     }
-    this.listeners.get(eventType)!.add(callback as EventCallback<GameEventType>);
+    this.listeners
+      .get(eventType)!
+      .add(callback as EventCallback<GameEventType>);
   }
 
   public off<T extends GameEventType>(
     eventType: T,
-    callback: EventCallback<T>
+    callback: EventCallback<T>,
   ): void {
     const callbacks = this.listeners.get(eventType);
     if (callbacks) {
@@ -96,7 +106,7 @@ class GameEventBus {
 
   public emit<T extends GameEventType>(
     eventType: T,
-    data: GameEventData[T]
+    data: GameEventData[T],
   ): void {
     const callbacks = this.listeners.get(eventType);
     if (callbacks) {
@@ -120,4 +130,3 @@ class GameEventBus {
 }
 
 export const gameEventBus = GameEventBus.getInstance();
-
