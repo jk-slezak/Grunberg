@@ -1,7 +1,7 @@
 import { createContext, useContext, useReducer, type ReactNode } from "react";
 import type { GameState, CharacterStatus, Position } from "../types/gameState";
 import type { Character } from "../types/character";
-import type { Item, InventorySlot } from "../types/inventory";
+import type { Item, InventorySlot, WeaponItem, ArmorItem } from "../types/inventory";
 import type { Quest } from "../types/quest";
 import { createInitialGameState } from "../types/gameState";
 import { gameEventBus } from "../core/GameEventBus";
@@ -160,7 +160,13 @@ const gameStateReducer = (state: GameState, action: GameStateAction): GameState 
       const { item } = action.payload;
       if (item.type !== "weapon" && item.type !== "armor") return state;
 
-      const slot = "slot" in item ? item.slot : null;
+      let slot: string | null = null;
+      if (item.type === "weapon") {
+        slot = (item as WeaponItem).slot;
+      } else if (item.type === "armor") {
+        slot = (item as ArmorItem).slot;
+      }
+
       if (!slot) return state;
 
       gameEventBus.emit("ITEM_EQUIPPED", { itemId: item.id, slot });
@@ -251,7 +257,7 @@ const gameStateReducer = (state: GameState, action: GameStateAction): GameState 
       if (quest) {
         gameEventBus.emit("QUEST_COMPLETED", { 
           questId, 
-          rewards: quest.rewards 
+          rewards: { ...quest.rewards } as Record<string, unknown>
         });
       }
 
