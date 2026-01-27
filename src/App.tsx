@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import "./App.css";
 import CharacterCreator from "./components/CharacterCreator";
 import { MainMenu } from "./components/organisms/MainMenu";
-import { useGameState } from "./contexts/GameStateContext";
+import { useGameState } from "./contexts/useGameState";
 import { SaveService } from "./services/SaveService";
 import { useAutoSave } from "./hooks/useAutoSave";
 import type { Character } from "./types/character";
