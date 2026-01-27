@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { Input } from "../../atoms/Input";
 import styles from "./ChatInput.module.css";
@@ -15,12 +15,12 @@ export const ChatInput = ({
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     if (value.trim()) {
       onSendMessage(value.trim());
       setValue("");
     }
-  };
+  }, [value, onSendMessage]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
