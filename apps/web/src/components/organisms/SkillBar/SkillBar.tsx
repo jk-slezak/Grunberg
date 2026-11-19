@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { useSkillHotkeys } from "../../../hooks/useSkillHotkeys";
 import { SkillButton } from "../../molecules/SkillButton";
 import styles from "./SkillBar.module.css";
-import { hotkeyService } from "../../../services/HotkeyService";
 
 export interface Skill {
   id: number | string;
   name: string;
   hotKey: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   cooldown?: number;
   onClick?: () => void;
 }
@@ -17,34 +17,7 @@ export interface SkillBarProps {
 }
 
 export const SkillBar = ({ skills }: SkillBarProps) => {
-  const [activeSkill, setActiveSkill] = useState<string | null>(null);
-
-  useEffect(() => {
-    const hotkeyActions = skills.map((skill) => ({
-      key: skill.hotKey,
-      callback: () => skill.onClick?.(),
-    }));
-
-    hotkeyService.register(hotkeyActions);
-
-    const unsubscribeKeyDown = hotkeyService.onKeyDown((key) => {
-      const skill = skills.find((s) => s.hotKey.toLowerCase() === key);
-      if (skill) {
-        setActiveSkill(skill.hotKey);
-      }
-    });
-
-    const unsubscribeKeyUp = hotkeyService.onKeyUp(() => {
-      setActiveSkill(null);
-    });
-
-    return () => {
-      const keysToUnregister = skills.map((skill) => skill.hotKey);
-      hotkeyService.unregister(keysToUnregister);
-      unsubscribeKeyDown();
-      unsubscribeKeyUp();
-    };
-  }, [skills]);
+  const activeHotKey = useSkillHotkeys(skills);
 
   return (
     <div className={styles["skill-bar"]}>
@@ -57,7 +30,7 @@ export const SkillBar = ({ skills }: SkillBarProps) => {
             hotKey={skill.hotKey}
             cooldown={skill.cooldown}
             onClick={skill.onClick}
-            isActive={activeSkill === skill.hotKey}
+            isActive={activeHotKey === skill.hotKey}
           />
         ))}
       </div>

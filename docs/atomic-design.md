@@ -86,12 +86,12 @@ export const StartButton = () => (
   - `useGameState()` returns the game state;
   - `useGameActions()` returns stable actions;
   - `useSavedGame()` reads the local save;
-  - `useAutoSave()` saves the game (debounced).
+  - `useAutoSave()` saves the game (debounced);
+  - `useCharacterForm()` holds the character creator's state and rules;
+  - `useChatMessages()` holds the chat history; `useChatInput()` handles typing, Enter to send and Enter-to-focus;
+  - `useSkillHotkeys()` binds skills to their keys (ignored while the player types in a text field).
 - **Screens connect the two.** `screens/MenuScreen.tsx`, `NewCharacterScreen.tsx` and `GameScreen.tsx` call hooks and pass data and callbacks down. `app/*/page.tsx` files only render a screen.
-- **Current exceptions**, to be moved into hooks:
-  - `Chat` keeps its message list in local state with placeholder messages;
-  - `ChatInput` and `SkillBar` register keyboard shortcuts in effects;
-  - `CharacterCreator` holds the whole form state.
+- **Components call at most one hook and render.** `Chat`, `ChatInput`, `SkillBar` and `CharacterCreator` have no state or effects of their own. Hooks are tested on their own with React Testing Library (`apps/web/src/hooks/*.test.ts(x)`).
 
 ```tsx
 "use client";
@@ -193,7 +193,8 @@ export const GameLayout = () => {
 **Today:**
 
 - unit tests for the game store, save validation, server request handling and every API route (Vitest);
-- no component tests yet.
+- hook tests with React Testing Library (character form, chat, skill hotkeys);
+- no visual or e2e component tests yet.
 
 **Planned (see the README roadmap):**
 
@@ -215,8 +216,8 @@ export const GameLayout = () => {
 ## Next steps
 
 1. Build the missing organisms: CharacterSheet, Inventory, Combat
-2. Split `CharacterCreator` into the hierarchy, with its form logic in a hook
-3. Move the remaining component state into hooks (chat messages, keyboard shortcuts)
+2. Split `CharacterCreator` into the hierarchy (its form logic already lives in `useCharacterForm`)
+3. Generate chat messages from engine events instead of placeholder text
 4. Translate the UI labels to English
 5. Add Storybook and component tests (axe, Playwright)
 6. Write a design system guide (color palette, typography)

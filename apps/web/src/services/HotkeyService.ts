@@ -6,6 +6,10 @@ export interface HotkeyAction {
   callback: HotkeyCallback;
 }
 
+export const isTypingTarget = (target: EventTarget | null): boolean =>
+  target instanceof HTMLElement &&
+  (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+
 class HotkeyService {
   private hotkeys: Map<string, HotkeyCallback> = new Map();
   private keyDownListeners: Set<Listener> = new Set();
@@ -19,6 +23,7 @@ class HotkeyService {
   }
 
   private handleKeyDown = (event: KeyboardEvent) => {
+    if (isTypingTarget(event.target)) return;
     const key = event.key.toLowerCase();
     const action = this.hotkeys.get(key);
 
@@ -31,8 +36,6 @@ class HotkeyService {
 
   private handleKeyUp = (event: KeyboardEvent) => {
     const key = event.key.toLowerCase();
-    // We notify listeners even if the key is not a registered hotkey,
-    // to handle cases where the active state needs to be cleared.
     this.keyUpListeners.forEach((listener) => listener(key));
   };
 

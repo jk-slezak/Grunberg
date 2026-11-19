@@ -1,72 +1,21 @@
-import { useState } from "react";
-import {
-  CLASSES,
-  INITIAL_STAT_POINTS,
-  isValidCharacterName,
-  MAX_NAME_LENGTH,
-  MAX_STAT_VALUE,
-  MIN_STAT_VALUE,
-  normalizeCharacterName,
-  RACE_BASE_STATS,
-  RACES,
-  sumStats,
-  type Character,
-  type CharacterClass,
-  type CharacterStats,
-  type Race,
-} from "@grunberg/engine";
+import type { FormEvent } from "react";
+import { CLASSES, MAX_NAME_LENGTH, RACES, type Character } from "@grunberg/engine";
+import { useCharacterForm, type StatName } from "../hooks/useCharacterForm";
 import "./CharacterCreator.css";
 
 interface CharacterCreatorProps {
   onCharacterCreated: (character: Character) => void;
 }
 
+const STAT_NAMES: StatName[] = ["strength", "agility", "intelligence"];
+
 export default function CharacterCreator({ onCharacterCreated }: CharacterCreatorProps) {
-  const [name, setName] = useState("");
-  const [race, setRace] = useState<Race>("Human");
-  const [gender, setGender] = useState<boolean>(true);
-  const [characterClass, setCharacterClass] = useState<CharacterClass>("Warrior");
-  const [stats, setStats] = useState<CharacterStats>(RACE_BASE_STATS.Human);
+  const form = useCharacterForm();
 
-  const remainingPoints = INITIAL_STAT_POINTS - sumStats(stats);
-  const isValid = isValidCharacterName(name) && remainingPoints === 0;
-
-  const canIncrease = (stat: keyof CharacterStats) => {
-    return stats[stat] < MAX_STAT_VALUE && remainingPoints > 0;
-  };
-
-  const canDecrease = (stat: keyof CharacterStats) => {
-    return stats[stat] > MIN_STAT_VALUE;
-  };
-
-  const increaseStat = (stat: keyof CharacterStats) => {
-    if (canIncrease(stat)) {
-      setStats({ ...stats, [stat]: stats[stat] + 1 });
-    }
-  };
-
-  const decreaseStat = (stat: keyof CharacterStats) => {
-    if (canDecrease(stat)) {
-      setStats({ ...stats, [stat]: stats[stat] - 1 });
-    }
-  };
-
-  const handleRaceChange = (newRace: Race) => {
-    setRace(newRace);
-    setStats(RACE_BASE_STATS[newRace]);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (isValid) {
-      onCharacterCreated({
-        name: normalizeCharacterName(name),
-        race,
-        gender,
-        class: characterClass,
-        stats,
-      });
-    }
+    const character = form.toCharacter();
+    if (character) onCharacterCreated(character);
   };
 
   return (
@@ -78,8 +27,8 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
           <input
             id="character-name"
             type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={form.name}
+            onChange={(e) => form.setName(e.target.value)}
             placeholder="Enter character name"
             maxLength={MAX_NAME_LENGTH}
           />
@@ -92,8 +41,8 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
               <button
                 key={r}
                 type="button"
-                className={`race-button ${race === r ? "selected" : ""}`}
-                onClick={() => handleRaceChange(r)}
+                className={`race-button ${form.race === r ? "selected" : ""}`}
+                onClick={() => form.selectRace(r)}
               >
                 {r}
               </button>
@@ -106,15 +55,15 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
           <div className="race-selection">
             <button
               type="button"
-              className={`race-button ${gender ? "selected" : ""}`}
-              onClick={() => setGender(true)}
+              className={`race-button ${form.gender ? "selected" : ""}`}
+              onClick={() => form.setGender(true)}
             >
               Male
             </button>
             <button
               type="button"
-              className={`race-button ${!gender ? "selected" : ""}`}
-              onClick={() => setGender(false)}
+              className={`race-button ${!form.gender ? "selected" : ""}`}
+              onClick={() => form.setGender(false)}
             >
               Female
             </button>
@@ -128,8 +77,8 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
               <button
                 key={cls}
                 type="button"
-                className={`race-button ${characterClass === cls ? "selected" : ""}`}
-                onClick={() => setCharacterClass(cls)}
+                className={`race-button ${form.characterClass === cls ? "selected" : ""}`}
+                onClick={() => form.setCharacterClass(cls)}
               >
                 {cls}
               </button>
@@ -138,24 +87,24 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
         </div>
 
         <div className="form-section">
-          <label>Stats (Points remaining: {remainingPoints}):</label>
+          <label>Stats (Points remaining: {form.remainingPoints}):</label>
           <div className="stats-container">
-            {(Object.keys(stats) as Array<keyof CharacterStats>).map((stat) => (
+            {STAT_NAMES.map((stat) => (
               <div key={stat} className="stat-row">
                 <span className="stat-name">{stat.charAt(0).toUpperCase() + stat.slice(1)}:</span>
                 <button
                   type="button"
-                  onClick={() => decreaseStat(stat)}
-                  disabled={!canDecrease(stat)}
+                  onClick={() => form.decreaseStat(stat)}
+                  disabled={!form.canDecrease(stat)}
                   className="stat-button"
                 >
                   -
                 </button>
-                <span className="stat-value">{stats[stat]}</span>
+                <span className="stat-value">{form.stats[stat]}</span>
                 <button
                   type="button"
-                  onClick={() => increaseStat(stat)}
-                  disabled={!canIncrease(stat)}
+                  onClick={() => form.increaseStat(stat)}
+                  disabled={!form.canIncrease(stat)}
                   className="stat-button"
                 >
                   +
@@ -165,7 +114,7 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
           </div>
         </div>
 
-        <button type="submit" disabled={!isValid} className="submit-button">
+        <button type="submit" disabled={!form.isValid} className="submit-button">
           Create Character
         </button>
       </form>

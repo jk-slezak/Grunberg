@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import { useChatInput } from "../../../hooks/useChatInput";
 import { Input } from "../../atoms/Input";
 import styles from "./ChatInput.module.css";
 
@@ -9,47 +8,15 @@ export interface ChatInputProps {
 }
 
 export const ChatInput = ({ placeholder = "Wpisz komendę...", onSendMessage }: ChatInputProps) => {
-  const [value, setValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleSend = useCallback(() => {
-    if (value.trim()) {
-      onSendMessage(value.trim());
-      setValue("");
-    }
-  }, [value, onSendMessage]);
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSend();
-    }
-  };
-
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Enter") {
-        if (inputRef.current && document.activeElement !== inputRef.current) {
-          inputRef.current.focus();
-        } else if (document.activeElement === inputRef.current) {
-          handleSend();
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleGlobalKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleGlobalKeyDown);
-    };
-  }, [handleSend]);
+  const { value, onChange, onKeyDown, inputRef } = useChatInput(onSendMessage);
 
   return (
     <div className={styles["chat-input"]}>
       <Input
         variant="dark"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={handleKeyDown}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
         placeholder={placeholder}
         aria-label="Chat input"
         ref={inputRef}
