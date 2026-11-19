@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1795090553612,
+      "tag": "0000_wide_speedball",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795091335984,
+      "tag": "0001_nappy_master_mold",
+      "breakpoints": true
+    }
+  ]
+}

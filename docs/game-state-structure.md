@@ -1,10 +1,14 @@
 # Game State Structure
 
-Pełna dokumentacja struktury stanu gry w Grunberg.
+Full documentation of the game state structure in Grunberg.
 
-## Główny interfejs GameState
+- **Types:** `packages/engine/src/types/` (`gameState.ts`, `character.ts`, `inventory.ts`, `quest.ts`), exported from `@grunberg/engine`.
+- **Runtime validation:** `gameStateSchema` (`packages/engine/src/gameStateSchema.ts`) is the Zod version of `GameState`, with size limits (ids up to 64 characters, lists up to 1000 entries, maps up to 256×256, no negative amounts). It validates everything that comes from outside the engine: the localStorage save and imported save files. A compile-time check guarantees that a validated value is a `GameState`.
+- **Changes:** state only changes through engine actions (`applyAction`); see [architecture.md](./architecture.md).
 
-```typescript
+## The main GameState interface
+
+```ts
 interface GameState {
   character: Character | null;
   characterStatus: CharacterStatus | null;
@@ -19,16 +23,22 @@ interface GameState {
 }
 ```
 
-## Character (Postać)
+## Character
 
-Zawiera podstawowe informacje o postaci stworzonej przez gracza.
+Basic information about the character created by the player.
 
-```typescript
+Rules, enforced by both the character creator and the API (`characterSchema`):
+
+- `race` is one of `RACES` and `class` one of `CLASSES` (`packages/engine/src/types/character.ts`);
+- every stat is between `MIN_STAT_VALUE` (1) and `MAX_STAT_VALUE` (10), and they add up to `INITIAL_STAT_POINTS` (15);
+- the name is trimmed and NFC-normalized, at most `MAX_NAME_LENGTH` (20) characters: letters and digits in any script, with single spaces, apostrophes or hyphens between words.
+
+```ts
 interface Character {
   name: string;
-  race: "Human" | "Elf" | "Dwarf";
+  race: Race; // "Human" | "Elf" | "Dwarf"
   gender: boolean; // true = male, false = female
-  class: "Warrior" | "Rogue" | "Mage";
+  class: CharacterClass; // "Warrior" | "Rogue" | "Mage"
   stats: CharacterStats;
 }
 
@@ -39,9 +49,10 @@ interface CharacterStats {
 }
 ```
 
-**Przykład:**
-```typescript
-{
+**Example:**
+
+```ts
+const character: Character = {
   name: "Aragorn",
   race: "Human",
   gender: true,
@@ -51,14 +62,14 @@ interface CharacterStats {
     agility: 5,
     intelligence: 2
   }
-}
+};
 ```
 
-## CharacterStatus (Status postaci)
+## CharacterStatus
 
-Dynamiczne dane zmieniające się w trakcie gry.
+Dynamic data that changes during the game.
 
-```typescript
+```ts
 interface CharacterStatus {
   hp: number;
   maxHp: number;
@@ -83,9 +94,10 @@ interface StatusEffect {
 }
 ```
 
-**Przykład:**
-```typescript
-{
+**Example:**
+
+```ts
+const characterStatus: CharacterStatus = {
   hp: 85,
   maxHp: 100,
   mp: 30,
@@ -94,27 +106,27 @@ interface StatusEffect {
   expToNextLevel: 1000,
   level: 3,
   currentStats: {
-    strength: 10, // bazowa 8 + 2 z levelu
+    strength: 10, // base 8 + 2 from levels
     agility: 6,
     intelligence: 3
   },
   statusEffects: [
     {
       id: "strength_potion",
-      name: "Siła giganta",
+      name: "Giant's Strength",
       type: "buff",
       duration: 300,
       effect: { stat: "strength", value: 5 }
     }
   ]
-}
+};
 ```
 
-## Position (Pozycja)
+## Position
 
-Aktualne położenie gracza w dungeonie.
+The player's current location in the dungeon.
 
-```typescript
+```ts
 interface Position {
   floor: number;
   x: number;
@@ -122,20 +134,21 @@ interface Position {
 }
 ```
 
-**Przykład:**
-```typescript
-{
+**Example:**
+
+```ts
+const position: Position = {
   floor: 3,
   x: 12,
   y: 8
-}
+};
 ```
 
-## Inventory (Ekwipunek)
+## Inventory
 
-Przedmioty, ekwipunek i waluta gracza.
+The player's items, equipment and currency.
 
-```typescript
+```ts
 interface Inventory {
   items: InventorySlot[];
   equipment: Equipment;
@@ -174,17 +187,18 @@ interface Item {
 }
 ```
 
-**Przykład:**
-```typescript
-{
+**Example:**
+
+```ts
+const inventory: Inventory = {
   items: [
     {
       item: {
         id: "health_potion",
-        name: "Mikstura zdrowia",
+        name: "Health Potion",
         type: "consumable",
         rarity: "common",
-        description: "Przywraca 50 HP",
+        description: "Restores 50 HP",
         stackable: true,
         maxStack: 99,
         value: 25
@@ -194,10 +208,10 @@ interface Item {
     {
       item: {
         id: "ancient_key",
-        name: "Pradawny klucz",
+        name: "Ancient Key",
         type: "quest",
         rarity: "rare",
-        description: "Klucz do starożytnych drzwi",
+        description: "A key to an ancient door",
         stackable: false,
         value: 0
       },
@@ -207,13 +221,13 @@ interface Item {
   equipment: {
     weapon: {
       id: "iron_sword",
-      name: "Żelazny miecz",
+      name: "Iron Sword",
       type: "weapon",
       rarity: "common",
       damage: 15,
       slot: "weapon",
       requiredLevel: 1,
-      description: "Solidny miecz z żelaza",
+      description: "A sturdy iron sword",
       stackable: false,
       value: 100
     },
@@ -228,14 +242,14 @@ interface Item {
     gems: 12
   },
   capacity: 20
-}
+};
 ```
 
-## Quests (Questy)
+## Quests
 
-System zadań i ich postępów.
+The quest system and quest progress.
 
-```typescript
+```ts
 interface QuestProgress {
   activeQuests: Quest[];
   completedQuests: string[];
@@ -271,14 +285,15 @@ interface QuestRewards {
 }
 ```
 
-**Przykład:**
-```typescript
-{
+**Example:**
+
+```ts
+const quests: QuestProgress = {
   activeQuests: [
     {
       id: "tower_floor_1",
-      title: "Zbadaj pierwsze piętro Mglistej Wieży",
-      description: "Eksploruj pierwsze piętro i pokonaj straż cienia",
+      title: "Explore the first floor of the Tower of Mist",
+      description: "Explore the first floor and defeat the shadow guard",
       type: "main",
       status: "active",
       components: [
@@ -288,7 +303,7 @@ interface QuestRewards {
           targetId: "floor_1_center",
           count: 1,
           currentProgress: 1,
-          description: "Dotrzyj do centrum piętra"
+          description: "Reach the center of the floor"
         },
         {
           id: "defeat_guardians",
@@ -296,7 +311,7 @@ interface QuestRewards {
           targetId: "shadow_guardian",
           count: 3,
           currentProgress: 2,
-          description: "Pokonaj 3 strażników cienia"
+          description: "Defeat 3 shadow guardians"
         }
       ],
       rewards: {
@@ -310,22 +325,23 @@ interface QuestRewards {
   completedQuests: ["tutorial", "first_steps"],
   availableQuests: ["mysterious_merchant"],
   failedQuests: []
-}
+};
 ```
 
-## Flags (Flagi gry)
+## Flags
 
-Słownik flag reprezentujących postęp w grze.
+A dictionary of flags that represent progress in the game.
 
-```typescript
+```ts
 interface GameFlags {
   [key: string]: boolean | number | string;
 }
 ```
 
-**Przykład:**
-```typescript
-{
+**Example:**
+
+```ts
+const flags: GameFlags = {
   "tutorial_completed": true,
   "merchant_met": true,
   "tower_entered": true,
@@ -334,14 +350,14 @@ interface GameFlags {
   "npc_merchant_friendship": 75,
   "secret_door_found": true,
   "floor_1_boss_defeated": true
-}
+};
 ```
 
-## DungeonFloor (Piętro dungeonu)
+## DungeonFloor
 
-Reprezentacja pojedynczego piętra z mapą i zawartością.
+A single floor with its map and contents.
 
-```typescript
+```ts
 interface DungeonFloor {
   floorNumber: number;
   tiles: MapTile[][];
@@ -359,33 +375,34 @@ interface MapTile {
 }
 ```
 
-**Przykład:**
-```typescript
-{
+**Example:**
+
+```ts
+const floor: DungeonFloor = {
   floorNumber: 1,
   tiles: [
     [
       { x: 0, y: 0, type: "wall", explored: true, visible: true },
       { x: 1, y: 0, type: "wall", explored: true, visible: true },
-      // ... więcej tiles
+      // ... more tiles
     ],
     [
       { x: 0, y: 1, type: "wall", explored: true, visible: true },
       { x: 1, y: 1, type: "empty", explored: true, visible: true },
-      // ... więcej tiles
+      // ... more tiles
     ]
   ],
   seed: "floor_1_20231115",
   enemies: ["shadow_guardian_001", "shadow_guardian_002"],
   npcs: ["merchant_floor_1"]
-}
+};
 ```
 
-## DialogueHistory (Historia dialogów)
+## DialogueHistory
 
-Historia rozmów z NPC.
+The history of conversations with NPCs.
 
-```typescript
+```ts
 interface DialogueHistory {
   npcId: string;
   dialogueId: string;
@@ -394,29 +411,30 @@ interface DialogueHistory {
 }
 ```
 
-**Przykład:**
-```typescript
-[
+**Example:**
+
+```ts
+const dialogueHistory: DialogueHistory[] = [
   {
     npcId: "merchant",
     dialogueId: "first_meeting",
     timestamp: 1700000000000,
-    choicesMade: ["ask_about_tower", "buy_health_potion"]
+    choicesMade: ["ask_about_tower", "buy_health_potion"],
   },
   {
     npcId: "mysterious_sage",
     dialogueId: "prophecy_reveal",
     timestamp: 1700001000000,
-    choicesMade: ["accept_quest", "thank"]
-  }
-]
+    choicesMade: ["accept_quest", "thank"],
+  },
+];
 ```
 
-## GameMetadata (Metadane)
+## GameMetadata
 
-Informacje techniczne o zapisie gry.
+Technical information about the save.
 
-```typescript
+```ts
 interface GameMetadata {
   saveVersion: string;
   lastSaved: number;
@@ -425,20 +443,37 @@ interface GameMetadata {
 }
 ```
 
-**Przykład:**
-```typescript
-{
+**Example:**
+
+```ts
+const metadata: GameMetadata = {
   saveVersion: "1.0.0",
   lastSaved: 1700050000000,
-  playtime: 7200, // sekundy (2 godziny)
+  playtime: 7200, // seconds (2 hours)
   createdAt: 1700000000000
+};
+```
+
+## Saves and the server copy
+
+The player's own copy of the game is the local save:
+
+```ts
+interface SaveData {
+  version: string; // save format version, currently "1.0.0"
+  state: GameState;
+  timestamp: number; // when it was saved (ms)
 }
 ```
 
-## Pełny przykład GameState
+- **Autosave:** `useAutoSave` writes `SaveData` to localStorage shortly after every change (`apps/web/src/services/saveStorage.ts`).
+- **Export / import:** a save can be downloaded as a JSON file and loaded again. Imported files are limited to 1 MB and validated with `gameStateSchema` (`apps/web/src/services/saveFile.ts`).
+- **Server copy:** games created through the API live in Postgres (`game_sessions.state`) and expire 24 hours after their last change.
 
-```typescript
-{
+## Full GameState example
+
+```ts
+const gameState: GameState = {
   character: {
     name: "Aragorn",
     race: "Human",
@@ -467,10 +502,10 @@ interface GameMetadata {
       {
         item: {
           id: "health_potion",
-          name: "Mikstura zdrowia",
+          name: "Health Potion",
           type: "consumable",
           rarity: "common",
-          description: "Przywraca 50 HP",
+          description: "Restores 50 HP",
           stackable: true,
           maxStack: 99,
           value: 25
@@ -496,8 +531,8 @@ interface GameMetadata {
     activeQuests: [
       {
         id: "tower_floor_3",
-        title: "Pokonaj strażnika piętra 3",
-        description: "Zmierz się z potężnym strażnikiem",
+        title: "Defeat the guardian of floor 3",
+        description: "Face the mighty guardian",
         type: "main",
         status: "active",
         components: [
@@ -507,7 +542,7 @@ interface GameMetadata {
             targetId: "boss_room_floor_3",
             count: 1,
             currentProgress: 0,
-            description: "Znajdź pokój bossa"
+            description: "Find the boss room"
           }
         ],
         rewards: {
@@ -528,14 +563,14 @@ interface GameMetadata {
   },
   currentFloor: {
     floorNumber: 3,
-    tiles: [], // pełna mapa
+    tiles: [], // full map
     seed: "floor_3_seed",
     enemies: ["boss_guardian"],
     npcs: []
   },
   exploredFloors: {
-    1: { /* dane piętra 1 */ },
-    2: { /* dane piętra 2 */ }
+    1: { /* floor 1 data */ },
+    2: { /* floor 2 data */ }
   },
   dialogueHistory: [
     {
@@ -551,16 +586,16 @@ interface GameMetadata {
     playtime: 7200,
     createdAt: 1700000000000
   }
-}
+};
 ```
 
-## Typowe wartości na różnych etapach gry
+## Typical values at different stages of the game
 
-### Początek gry (po utworzeniu postaci)
+### Start of the game (after character creation)
 
-```typescript
-{
-  character: { /* dane z character creator */ },
+```ts
+const newGame: GameState = {
+  character: { /* data from the character creator */ },
   characterStatus: {
     hp: 100,
     maxHp: 100,
@@ -569,13 +604,13 @@ interface GameMetadata {
     exp: 0,
     expToNextLevel: 100,
     level: 1,
-    currentStats: { /* z character creator */ },
+    currentStats: { /* from the character creator */ },
     statusEffects: []
   },
   position: { floor: 0, x: 0, y: 0 },
   inventory: {
     items: [],
-    equipment: { /* wszystko null */ },
+    equipment: { /* all null */ },
     currency: { gold: 0, gems: 0 },
     capacity: 20
   },
@@ -595,25 +630,24 @@ interface GameMetadata {
     playtime: 0,
     createdAt: Date.now()
   }
-}
+};
 ```
 
-### Mid-game (około 5 godzin gry)
+### Mid-game (about 5 hours of play)
 
 - Level: 10-15
-- HP/MP: Znacznie wyższe dzięki levelom
-- Inventory: 10-15 przedmiotów, część ekwipunku założona
-- Quests: 2-3 aktywne, 10+ ukończone
-- Flags: 20-30 różnych flag
-- Explored floors: 5-10 pięter
-- Playtime: ~18000 sekund (5 godzin)
+- HP/MP: much higher thanks to levels
+- Inventory: 10-15 items, some equipment worn
+- Quests: 2-3 active, 10+ completed
+- Flags: 20-30 different flags
+- Explored floors: 5-10 floors
+- Playtime: ~18000 seconds (5 hours)
 
 ### End-game
 
 - Level: 30+
-- Inventory: Pełny ekwipunek legendarny
-- Quests: Główny wątek ukończony, side questy w trakcie
-- Flags: 50+ flag reprezentujących całą historię
-- Explored floors: 20+ pięter
-- Playtime: 50000+ sekund (14+ godzin)
-
+- Inventory: full legendary equipment
+- Quests: main story completed, side quests in progress
+- Flags: 50+ flags representing the whole story
+- Explored floors: 20+ floors
+- Playtime: 50000+ seconds (14+ hours)

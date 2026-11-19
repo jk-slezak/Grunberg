@@ -1,2 +1,0 @@
-export { MainMenu } from "./MainMenu";
-

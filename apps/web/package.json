@@ -1,0 +1,37 @@
+{
+  "name": "@grunberg/web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint:eslint": "eslint .",
+    "lint:types": "next typegen && tsc --noEmit",
+    "lint": "npm run lint:eslint && npm run lint:types",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@grunberg/engine": "*",
+    "@grunberg/game-server": "*",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-icons": "5.7.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "10.15.0",
+    "eslint-config-next": "16.4.6",
+    "eslint-config-prettier": "10.1.8",
+    "jsdom": "31.0.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
