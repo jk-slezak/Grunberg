@@ -1,28 +1,26 @@
-import { useState, useEffect, useRef } from "react";
-import { SaveService } from "../../../services/SaveService";
+"use client";
+
+import { useState, useRef } from "react";
+import Image from "next/image";
+import { useSavedGame } from "../../../hooks/useSavedGame";
 import styles from "./MainMenu.module.css";
 import menuBgImage from "../../../assets/images/menu_bg.png";
 
 interface MainMenuProps {
   onNewGame: () => void;
   onContinue: () => void;
-  onLoadSave: (file: File) => void;
+  onLoadSave: (file: File) => Promise<void>;
 }
 
-export const MainMenu = ({
-  onNewGame,
-  onContinue,
-  onLoadSave,
-}: MainMenuProps) => {
-  const [hasSave, setHasSave] = useState(false);
-  const [saveTimestamp, setSaveTimestamp] = useState<number | null>(null);
+export const MainMenu = ({ onNewGame, onContinue, onLoadSave }: MainMenuProps) => {
+  const { hasSave, savedAt: saveTimestamp } = useSavedGame();
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleNewGameClick = () => {
     if (hasSave) {
       const confirmed = window.confirm(
-        "Starting a new game will overwrite your current save. Are you sure you want to continue?"
+        "Starting a new game will overwrite your current save. Are you sure you want to continue?",
       );
       if (!confirmed) {
         return;
@@ -37,26 +35,14 @@ export const MainMenu = ({
     fileInputRef.current?.click();
   };
 
-  useEffect(() => {
-    const saveExists = SaveService.hasSaveData();
-    setHasSave(saveExists);
-
-    if (saveExists) {
-      const timestamp = SaveService.getSaveTimestamp();
-      setSaveTimestamp(timestamp);
-    }
-  }, []);
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setError(null);
       try {
-        onLoadSave(file);
+        await onLoadSave(file);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load save file"
-        );
+        setError(err instanceof Error ? err.message : "Failed to load save file");
       }
     }
 
@@ -72,7 +58,14 @@ export const MainMenu = ({
 
   return (
     <div className={styles.container}>
-      <img src={menuBgImage} alt="" className={styles.backgroundImage} />
+      <Image
+        src={menuBgImage}
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className={styles.backgroundImage}
+      />
       <h1 className={styles.title}>Grunberg</h1>
       <p className={styles.subtitle}>Misty Tower Awaits</p>
 
@@ -86,17 +79,11 @@ export const MainMenu = ({
             >
               Continue
               {saveTimestamp && (
-                <div className={styles.saveInfo}>
-                  Last saved: {formatTimestamp(saveTimestamp)}
-                </div>
+                <div className={styles.saveInfo}>Last saved: {formatTimestamp(saveTimestamp)}</div>
               )}
             </button>
 
-            <button
-              type="button"
-              className={styles.menuButton}
-              onClick={handleNewGameClick}
-            >
+            <button type="button" className={styles.menuButton} onClick={handleNewGameClick}>
               New Game
             </button>
           </>
@@ -121,11 +108,7 @@ export const MainMenu = ({
           </>
         )}
 
-        <button
-          type="button"
-          className={styles.menuButton}
-          onClick={handleLoadSaveClick}
-        >
+        <button type="button" className={styles.menuButton} onClick={handleLoadSaveClick}>
           Load Save File
         </button>
         <input

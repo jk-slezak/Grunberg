@@ -1,8 +1,4 @@
-export type QuestComponentType = 
-  | "defeat_enemy" 
-  | "reach_location" 
-  | "collect_item" 
-  | "talk_to_npc";
+export type QuestComponentType = "defeat_enemy" | "reach_location" | "collect_item" | "talk_to_npc";
 
 export type QuestStatus = "available" | "active" | "completed" | "failed";
 
@@ -62,4 +58,3 @@ export interface QuestProgress {
   availableQuests: string[];
   failedQuests: string[];
 }
-

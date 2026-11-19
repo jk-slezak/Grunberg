@@ -10,20 +10,24 @@ on:
       - main
       - master
 
+permissions:
+  contents: read
+
 jobs:
-  # Type checking, linting and tests for every workspace (web, api, engine)
   check:
     name: Type Check, Lint & Test
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies
@@ -35,10 +39,12 @@ jobs:
       - name: Run ESLint
         run: npm run lint:eslint --workspace @grunberg/web
 
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Run tests
         run: npm test
 
-  # Build job
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -46,12 +52,14 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies
@@ -60,14 +68,6 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: apps/web/dist/
-          retention-days: 7
-
-  # Deploy job (only on push to main/master)
   deploy:
     name: Deploy to Vercel
     runs-on: ubuntu-latest
@@ -83,23 +83,25 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+      - name: Install dependencies
+        run: npm ci
 
       - name: Pull Vercel Environment Information
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@65.15.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Build Project Artifacts
-        run: vercel build --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@65.15.0 build --prod --token="$VERCEL_TOKEN"
 
       - name: Deploy Project Artifacts to Vercel
         id: deploy
-        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@65.15.0 deploy --prebuilt --prod --token="$VERCEL_TOKEN"

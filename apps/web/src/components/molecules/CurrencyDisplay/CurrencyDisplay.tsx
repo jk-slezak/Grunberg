@@ -6,11 +6,7 @@ export interface CurrencyDisplayProps {
   label?: string;
 }
 
-export const CurrencyDisplay = ({ 
-  amount, 
-  icon = "💰", 
-  label = "złota" 
-}: CurrencyDisplayProps) => {
+export const CurrencyDisplay = ({ amount, icon = "💰", label = "złota" }: CurrencyDisplayProps) => {
   return (
     <div className={styles["currency-display"]}>
       <span className={styles["currency-display__icon"]}>{icon}</span>
@@ -20,5 +16,3 @@ export const CurrencyDisplay = ({
     </div>
   );
 };
-
-

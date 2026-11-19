@@ -5,18 +5,8 @@ import { Minimap } from "../../organisms/Minimap";
 import { GameHeader } from "../../organisms/GameHeader";
 import { PlayerStats } from "../../organisms/PlayerStats";
 import styles from "./GameLayout.module.css";
-import {
-  GiSwordsPower,
-  GiShield,
-  GiSparkles,
-  GiWindSlap,
-} from "react-icons/gi";
-import {
-  GiScrollQuill,
-  GiTreasureMap,
-  GiChart,
-  GiBackpack,
-} from "react-icons/gi";
+import { GiSwordsPower, GiShield, GiSparkles, GiWindSlap } from "react-icons/gi";
+import { GiScrollQuill, GiTreasureMap, GiChart, GiBackpack } from "react-icons/gi";
 import type { Skill } from "../../organisms/SkillBar/SkillBar";
 
 export const GameLayout = () => {

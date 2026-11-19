@@ -1,0 +1,16 @@
+node_modules
+.next
+dist
+coverage
+next-env.d.ts
+package-lock.json
+packages/game-server/drizzle
+
+*.json
+*.config.ts
+*.config.js
+*.yml
+*.yaml
+.github
+.nvmrc
+.npmrc

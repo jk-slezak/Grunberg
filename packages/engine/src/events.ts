@@ -65,12 +65,9 @@ export interface GameEventData {
   STATUS_EFFECT_REMOVED: { effectId: string; effectName: string };
 }
 
-/** A discriminated union of every event the engine can produce. */
 export type GameEvent = {
   [K in GameEventType]: { type: K; data: GameEventData[K] };
 }[GameEventType];
 
-export const event = <T extends GameEventType>(
-  type: T,
-  data: GameEventData[T],
-): GameEvent => ({ type, data }) as GameEvent;
+export const event = <T extends GameEventType>(type: T, data: GameEventData[T]): GameEvent =>
+  ({ type, data }) as GameEvent;

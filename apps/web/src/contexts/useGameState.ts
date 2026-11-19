@@ -1,11 +1,8 @@
-import { useContext } from "react";
-import { GameStateContext } from "./contextDef";
-import type { GameStateContextValue } from "./contextDef";
+import { useSyncExternalStore } from "react";
+import type { GameState } from "@grunberg/engine";
+import { useGameStore } from "./GameStateContext";
 
-export const useGameState = (): GameStateContextValue => {
-  const context = useContext(GameStateContext);
-  if (context === undefined) {
-    throw new Error("useGameState must be used within a GameStateProvider");
-  }
-  return context;
+export const useGameState = (): GameState => {
+  const store = useGameStore();
+  return useSyncExternalStore(store.subscribe, store.getState, store.getState);
 };

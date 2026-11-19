@@ -7,24 +7,17 @@ export interface GameHeaderProps {
   title?: string;
 }
 
-export const GameHeader = ({ 
-  level = 1, 
+export const GameHeader = ({
+  level = 1,
   location = "Mglisty Portal - Piętro 1",
-  title = "Grunberg"
+  title = "Grunberg",
 }: GameHeaderProps) => {
   return (
     <div className={styles["game-header"]}>
       <div className={styles["game-header__info"]}>
-        <InfoField 
-          label="Level" 
-          value={level}
-          valueColor="#ffd700"
-        />
+        <InfoField label="Level" value={level} valueColor="#ffd700" />
         <div className={styles["game-header__divider"]} />
-        <InfoField 
-          label="Lokacja" 
-          value={location}
-        />
+        <InfoField label="Lokacja" value={location} />
       </div>
       <div className={styles["game-header__title"]}>
         <h1>{title}</h1>
@@ -32,5 +25,3 @@ export const GameHeader = ({
     </div>
   );
 };
-
-

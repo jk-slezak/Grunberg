@@ -8,20 +8,22 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
 }
 
-export const Button = ({ 
-  variant = "primary", 
+export const Button = ({
+  variant = "primary",
   size = "medium",
   icon,
   children,
   className = "",
-  ...props 
+  ...props
 }: ButtonProps) => {
   const classes = [
     styles.button,
     styles[`button--${variant}`],
     styles[`button--${size}`],
-    className
-  ].filter(Boolean).join(" ");
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button className={classes} {...props}>
@@ -30,5 +32,3 @@ export const Button = ({
     </button>
   );
 };
-
-

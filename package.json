@@ -11,10 +11,14 @@
   },
   "scripts": {
     "dev": "npm run dev --workspace @grunberg/web",
-    "dev:api": "npm run dev --workspace @grunberg/api",
     "build": "npm run build --workspace @grunberg/web",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "lint:types": "npm run lint:types --workspaces --if-present"
+    "lint:types": "npm run lint:types --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "3.10.1"
   }
 }

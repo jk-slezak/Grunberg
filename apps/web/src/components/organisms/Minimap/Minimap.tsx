@@ -8,10 +8,7 @@ export interface MinimapProps {
   title?: string;
 }
 
-export const Minimap = ({
-  gridSize = 200,
-  playerPosition = { x: 3, y: 3 },
-}: MinimapProps) => {
+export const Minimap = ({ gridSize = 200, playerPosition = { x: 3, y: 3 } }: MinimapProps) => {
   const generateMinimap = () => {
     const grid = [];
 
@@ -19,10 +16,11 @@ export const Minimap = ({
       for (let x = 0; x < gridSize; x++) {
         let cellType: CellType;
 
-        const isWall =
-          y === 0 || y === gridSize - 1 || x === 0 || x === gridSize - 1;
+        const isWall = y === 0 || y === gridSize - 1 || x === 0 || x === gridSize - 1;
         const isPlayer = x === playerPosition.x && y === playerPosition.y;
-        const isExplored = Math.random() > 0.5;
+        // Placeholder pattern until real floors exist. Must be deterministic:
+        // random values would differ between server and client renders.
+        const isExplored = (x * 31 + y * 17) % 7 < 3;
 
         if (isPlayer) {
           cellType = "player";

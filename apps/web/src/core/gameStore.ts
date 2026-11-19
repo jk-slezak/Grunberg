@@ -1,4 +1,9 @@
-import { applyAction, type GameEvent, type GameState, type GameStateAction } from "@grunberg/engine";
+import {
+  applyAction,
+  type GameEvent,
+  type GameState,
+  type GameStateAction,
+} from "@grunberg/engine";
 
 export interface GameStore {
   getState: () => GameState;
@@ -12,11 +17,11 @@ interface GameStoreOptions {
   now?: () => number;
 }
 
-/**
- * Holds game state outside React so every action is applied to the latest state
- * and its events are emitted immediately, even when React batches updates.
- */
-export const createGameStore = ({ initialState, emit, now = Date.now }: GameStoreOptions): GameStore => {
+export const createGameStore = ({
+  initialState,
+  emit,
+  now = Date.now,
+}: GameStoreOptions): GameStore => {
   let state = initialState;
   const listeners = new Set<() => void>();
 

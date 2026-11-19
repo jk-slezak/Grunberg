@@ -16,14 +16,8 @@ export const MessageList = ({ messages }: MessageListProps) => {
   return (
     <div className={styles["message-list"]}>
       {messages.map((msg) => (
-        <MessageBubble
-          key={msg.id}
-          text={msg.text}
-          type={msg.type}
-        />
+        <MessageBubble key={msg.id} text={msg.text} type={msg.type} />
       ))}
     </div>
   );
 };
-
-

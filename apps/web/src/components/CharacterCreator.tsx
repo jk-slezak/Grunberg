@@ -1,16 +1,19 @@
 import { useState } from "react";
-import type {
-  Character,
-  Race,
-  CharacterStats,
-  CharacterClass,
-} from "@grunberg/engine";
 import {
-  RACES,
-  RACE_BASE_STATS,
+  CLASSES,
   INITIAL_STAT_POINTS,
-  MIN_STAT_VALUE,
+  isValidCharacterName,
+  MAX_NAME_LENGTH,
   MAX_STAT_VALUE,
+  MIN_STAT_VALUE,
+  normalizeCharacterName,
+  RACE_BASE_STATS,
+  RACES,
+  sumStats,
+  type Character,
+  type CharacterClass,
+  type CharacterStats,
+  type Race,
 } from "@grunberg/engine";
 import "./CharacterCreator.css";
 
@@ -18,18 +21,15 @@ interface CharacterCreatorProps {
   onCharacterCreated: (character: Character) => void;
 }
 
-export default function CharacterCreator({
-  onCharacterCreated,
-}: CharacterCreatorProps) {
+export default function CharacterCreator({ onCharacterCreated }: CharacterCreatorProps) {
   const [name, setName] = useState("");
   const [race, setRace] = useState<Race>("Human");
   const [gender, setGender] = useState<boolean>(true);
-  const [characterClass, setCharacterClass] =
-    useState<CharacterClass>("Warrior");
+  const [characterClass, setCharacterClass] = useState<CharacterClass>("Warrior");
   const [stats, setStats] = useState<CharacterStats>(RACE_BASE_STATS.Human);
 
-  const totalPoints = stats.strength + stats.agility + stats.intelligence;
-  const remainingPoints = INITIAL_STAT_POINTS - totalPoints;
+  const remainingPoints = INITIAL_STAT_POINTS - sumStats(stats);
+  const isValid = isValidCharacterName(name) && remainingPoints === 0;
 
   const canIncrease = (stat: keyof CharacterStats) => {
     return stats[stat] < MAX_STAT_VALUE && remainingPoints > 0;
@@ -58,9 +58,9 @@ export default function CharacterCreator({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim() && remainingPoints === 0) {
+    if (isValid) {
       onCharacterCreated({
-        name: name.trim(),
+        name: normalizeCharacterName(name),
         race,
         gender,
         class: characterClass,
@@ -68,8 +68,6 @@ export default function CharacterCreator({
       });
     }
   };
-
-  const isValid = name.trim() !== "" && remainingPoints === 0;
 
   return (
     <div className="character-creator">
@@ -83,7 +81,7 @@ export default function CharacterCreator({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter character name"
-            maxLength={20}
+            maxLength={MAX_NAME_LENGTH}
           />
         </div>
 
@@ -126,7 +124,7 @@ export default function CharacterCreator({
         <div className="form-section">
           <label>Class:</label>
           <div className="race-selection">
-            {(["Warrior", "Rogue", "Mage"] as CharacterClass[]).map((cls) => (
+            {CLASSES.map((cls) => (
               <button
                 key={cls}
                 type="button"
@@ -144,9 +142,7 @@ export default function CharacterCreator({
           <div className="stats-container">
             {(Object.keys(stats) as Array<keyof CharacterStats>).map((stat) => (
               <div key={stat} className="stat-row">
-                <span className="stat-name">
-                  {stat.charAt(0).toUpperCase() + stat.slice(1)}:
-                </span>
+                <span className="stat-name">{stat.charAt(0).toUpperCase() + stat.slice(1)}:</span>
                 <button
                   type="button"
                   onClick={() => decreaseStat(stat)}

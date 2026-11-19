@@ -119,4 +119,3 @@ export const createInitialGameState = (now: number = Date.now()): GameState => (
     createdAt: now,
   },
 });
-

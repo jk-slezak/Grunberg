@@ -63,4 +63,3 @@ export interface Inventory {
   currency: Currency;
   capacity: number;
 }
-

@@ -12,8 +12,12 @@
     "lint:types": "tsc --noEmit"
   },
   "devDependencies": {
-    "fast-check": "^3.23.2",
-    "typescript": "~5.9.3",
-    "vitest": "^3.2.4"
+    "@types/node": "26.6.6",
+    "fast-check": "4.10.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
   }
 }

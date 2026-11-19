@@ -23,7 +23,7 @@
 }
 
 .container::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -51,7 +51,7 @@
   margin-bottom: 0.5rem;
   text-align: center;
   color: #a78bfa;
-  text-shadow: 
+  text-shadow:
     0 0 20px rgba(167, 139, 250, 0.8),
     0 0 40px rgba(167, 139, 250, 0.5),
     0 0 60px rgba(167, 139, 250, 0.3),
@@ -113,14 +113,14 @@
 .menuButton.primary {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(124, 58, 237, 0.9) 100%);
   border-color: rgba(167, 139, 250, 0.8);
-  box-shadow: 
+  box-shadow:
     0 4px 20px rgba(139, 92, 246, 0.5),
     0 0 40px rgba(167, 139, 250, 0.3);
 }
 
 .menuButton.primary:hover:not(:disabled) {
   background: linear-gradient(135deg, rgba(139, 92, 246, 1) 0%, rgba(124, 58, 237, 1) 100%);
-  box-shadow: 
+  box-shadow:
     0 6px 30px rgba(139, 92, 246, 0.6),
     0 0 50px rgba(167, 139, 250, 0.4);
 }
@@ -128,7 +128,7 @@
 .menuButton.secondary {
   background: linear-gradient(135deg, rgba(167, 139, 250, 0.9) 0%, rgba(139, 92, 246, 0.9) 100%);
   border-color: rgba(196, 181, 253, 0.8);
-  box-shadow: 
+  box-shadow:
     0 4px 20px rgba(167, 139, 250, 0.5),
     0 0 40px rgba(196, 181, 253, 0.3);
   animation: pulse 2s ease-in-out infinite;
@@ -136,20 +136,21 @@
 
 .menuButton.secondary:hover:not(:disabled) {
   background: linear-gradient(135deg, rgba(167, 139, 250, 1) 0%, rgba(139, 92, 246, 1) 100%);
-  box-shadow: 
+  box-shadow:
     0 6px 30px rgba(167, 139, 250, 0.7),
     0 0 60px rgba(196, 181, 253, 0.5);
   animation: none;
 }
 
 @keyframes pulse {
-  0%, 100% {
-    box-shadow: 
+  0%,
+  100% {
+    box-shadow:
       0 4px 20px rgba(167, 139, 250, 0.5),
       0 0 40px rgba(196, 181, 253, 0.3);
   }
   50% {
-    box-shadow: 
+    box-shadow:
       0 4px 25px rgba(167, 139, 250, 0.7),
       0 0 50px rgba(196, 181, 253, 0.5);
   }
@@ -199,4 +200,3 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
   z-index: 2;
 }
-

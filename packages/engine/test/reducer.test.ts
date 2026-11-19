@@ -42,8 +42,7 @@ const quest: Quest = {
 };
 
 const withHero = (): GameState =>
-  applyAction(createInitialGameState(NOW), { type: "CREATE_CHARACTER", payload: hero }, ctx)
-    .state;
+  applyAction(createInitialGameState(NOW), { type: "CREATE_CHARACTER", payload: hero }, ctx).state;
 
 describe("applyAction", () => {
   it("creates a character with starting status and emits an event", () => {
@@ -68,25 +67,53 @@ describe("applyAction", () => {
 
   it("stacks stackable items and respects maxStack", () => {
     let state = withHero();
-    state = applyAction(state, { type: "ADD_ITEM", payload: { item: potion, quantity: 6 } }, ctx).state;
-    state = applyAction(state, { type: "ADD_ITEM", payload: { item: potion, quantity: 4 } }, ctx).state;
+    state = applyAction(
+      state,
+      { type: "ADD_ITEM", payload: { item: potion, quantity: 6 } },
+      ctx,
+    ).state;
+    state = applyAction(
+      state,
+      { type: "ADD_ITEM", payload: { item: potion, quantity: 4 } },
+      ctx,
+    ).state;
     expect(state.inventory.items).toEqual([{ item: potion, quantity: 10 }]);
 
-    const overflow = applyAction(state, { type: "ADD_ITEM", payload: { item: potion, quantity: 1 } }, ctx);
+    const overflow = applyAction(
+      state,
+      { type: "ADD_ITEM", payload: { item: potion, quantity: 1 } },
+      ctx,
+    );
     expect(overflow.state).toBe(state);
     expect(overflow.events).toEqual([]);
   });
 
   it("rejects removing more items than the player has", () => {
-    const state = applyAction(withHero(), { type: "ADD_ITEM", payload: { item: potion, quantity: 1 } }, ctx).state;
-    const result = applyAction(state, { type: "REMOVE_ITEM", payload: { itemId: "potion", quantity: 2 } }, ctx);
+    const state = applyAction(
+      withHero(),
+      { type: "ADD_ITEM", payload: { item: potion, quantity: 1 } },
+      ctx,
+    ).state;
+    const result = applyAction(
+      state,
+      { type: "REMOVE_ITEM", payload: { itemId: "potion", quantity: 2 } },
+      ctx,
+    );
     expect(result.state).toBe(state);
     expect(result.events).toEqual([]);
   });
 
   it("reports the actually applied currency change", () => {
-    const state = applyAction(withHero(), { type: "UPDATE_CURRENCY", payload: { type: "gold", amount: 30 } }, ctx).state;
-    const { state: after, events } = applyAction(state, { type: "UPDATE_CURRENCY", payload: { type: "gold", amount: -100 } }, ctx);
+    const state = applyAction(
+      withHero(),
+      { type: "UPDATE_CURRENCY", payload: { type: "gold", amount: 30 } },
+      ctx,
+    ).state;
+    const { state: after, events } = applyAction(
+      state,
+      { type: "UPDATE_CURRENCY", payload: { type: "gold", amount: -100 } },
+      ctx,
+    );
     expect(after.inventory.currency.gold).toBe(0);
     expect(events).toEqual([{ type: "CURRENCY_CHANGED", data: { type: "gold", amount: -30 } }]);
   });
@@ -97,14 +124,24 @@ describe("applyAction", () => {
 
     state = applyAction(state, { type: "COMPLETE_QUEST", payload: quest.id }, ctx).state;
     expect(state.quests.completedQuests).toEqual([quest.id]);
-    expect(applyAction(state, { type: "COMPLETE_QUEST", payload: quest.id }, ctx).events).toEqual([]);
+    expect(applyAction(state, { type: "COMPLETE_QUEST", payload: quest.id }, ctx).events).toEqual(
+      [],
+    );
     expect(applyAction(state, { type: "START_QUEST", payload: quest }, ctx).events).toEqual([]);
   });
 
   it("emits FLOOR_CHANGED only when the floor changes", () => {
     const state = withHero();
-    const same = applyAction(state, { type: "UPDATE_POSITION", payload: { floor: 0, x: 1, y: 0 } }, ctx);
-    const next = applyAction(state, { type: "UPDATE_POSITION", payload: { floor: 1, x: 0, y: 0 } }, ctx);
+    const same = applyAction(
+      state,
+      { type: "UPDATE_POSITION", payload: { floor: 0, x: 1, y: 0 } },
+      ctx,
+    );
+    const next = applyAction(
+      state,
+      { type: "UPDATE_POSITION", payload: { floor: 1, x: 0, y: 0 } },
+      ctx,
+    );
     expect(same.events.map((e) => e.type)).toEqual(["POSITION_CHANGED"]);
     expect(next.events.map((e) => e.type)).toEqual(["POSITION_CHANGED", "FLOOR_CHANGED"]);
   });
@@ -121,7 +158,10 @@ describe("invariants (property-based)", () => {
       fc.property(
         fc.array(
           fc.record(
-            { hp: fc.integer({ min: -1000, max: 1000 }), mp: fc.integer({ min: -1000, max: 1000 }) },
+            {
+              hp: fc.integer({ min: -1000, max: 1000 }),
+              mp: fc.integer({ min: -1000, max: 1000 }),
+            },
             { requiredKeys: [] },
           ),
           { maxLength: 30 },
@@ -143,7 +183,11 @@ describe("invariants (property-based)", () => {
       fc.property(fc.array(fc.integer({ min: -500, max: 500 }), { maxLength: 50 }), (amounts) => {
         let state = withHero();
         for (const amount of amounts) {
-          state = applyAction(state, { type: "UPDATE_CURRENCY", payload: { type: "gold", amount } }, ctx).state;
+          state = applyAction(
+            state,
+            { type: "UPDATE_CURRENCY", payload: { type: "gold", amount } },
+            ctx,
+          ).state;
         }
         return state.inventory.currency.gold >= 0;
       }),
@@ -156,7 +200,11 @@ describe("invariants (property-based)", () => {
         let state = withHero();
         for (const id of ids) {
           const item: Item = { ...potion, id, stackable: false };
-          state = applyAction(state, { type: "ADD_ITEM", payload: { item, quantity: 1 } }, ctx).state;
+          state = applyAction(
+            state,
+            { type: "ADD_ITEM", payload: { item, quantity: 1 } },
+            ctx,
+          ).state;
         }
         return state.inventory.items.length <= state.inventory.capacity;
       }),

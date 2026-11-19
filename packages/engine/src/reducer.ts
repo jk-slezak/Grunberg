@@ -5,23 +5,18 @@ import type { Equipment, InventorySlot } from "./types/inventory";
 
 export interface ActionResult {
   state: GameState;
-  /** Events describing what happened. Empty when the action was rejected or had no effect. */
   events: GameEvent[];
 }
 
 export interface EngineContext {
-  /** Injected clock, so the engine stays deterministic in tests and on the server. */
   now: number;
 }
 
 const unchanged = (state: GameState): ActionResult => ({ state, events: [] });
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-export const createCharacterStatus = (
-  stats: CharacterStatus["currentStats"],
-): CharacterStatus => ({
+export const createCharacterStatus = (stats: CharacterStatus["currentStats"]): CharacterStatus => ({
   hp: 100,
   maxHp: 100,
   mp: 50,
@@ -33,11 +28,6 @@ export const createCharacterStatus = (
   statusEffects: [],
 });
 
-/**
- * The single source of truth for game rules.
- * Pure function: same (state, action, ctx) always gives the same result.
- * The client and the server both run it; the server's result is authoritative.
- */
 export const applyAction = (
   state: GameState,
   action: GameStateAction,
@@ -74,9 +64,7 @@ export const applyAction = (
 
       return {
         state: { ...state, characterStatus: next },
-        events: [
-          event("CHARACTER_STATUS_UPDATED", { hp: next.hp, mp: next.mp, exp: next.exp }),
-        ],
+        events: [event("CHARACTER_STATUS_UPDATED", { hp: next.hp, mp: next.mp, exp: next.exp })],
       };
     }
 
@@ -181,7 +169,6 @@ export const applyAction = (
             currency: { ...state.inventory.currency, [type]: after },
           },
         },
-        // Report the amount that actually changed, not the requested one.
         events: [event("CURRENCY_CHANGED", { type, amount: after - before })],
       };
     }
@@ -189,10 +176,7 @@ export const applyAction = (
     case "START_QUEST": {
       const quest = action.payload;
       const { activeQuests, completedQuests } = state.quests;
-      if (
-        activeQuests.some((q) => q.id === quest.id) ||
-        completedQuests.includes(quest.id)
-      ) {
+      if (activeQuests.some((q) => q.id === quest.id) || completedQuests.includes(quest.id)) {
         return unchanged(state);
       }
 

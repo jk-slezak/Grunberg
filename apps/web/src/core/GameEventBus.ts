@@ -19,32 +19,21 @@ class GameEventBus {
     return GameEventBus.instance;
   }
 
-  public on<T extends GameEventType>(
-    eventType: T,
-    callback: EventCallback<T>,
-  ): void {
+  public on<T extends GameEventType>(eventType: T, callback: EventCallback<T>): void {
     if (!this.listeners.has(eventType)) {
       this.listeners.set(eventType, new Set());
     }
-    this.listeners
-      .get(eventType)!
-      .add(callback as EventCallback<GameEventType>);
+    this.listeners.get(eventType)!.add(callback as EventCallback<GameEventType>);
   }
 
-  public off<T extends GameEventType>(
-    eventType: T,
-    callback: EventCallback<T>,
-  ): void {
+  public off<T extends GameEventType>(eventType: T, callback: EventCallback<T>): void {
     const callbacks = this.listeners.get(eventType);
     if (callbacks) {
       callbacks.delete(callback as EventCallback<GameEventType>);
     }
   }
 
-  public emit<T extends GameEventType>(
-    eventType: T,
-    data: GameEventData[T],
-  ): void {
+  public emit<T extends GameEventType>(eventType: T, data: GameEventData[T]): void {
     const callbacks = this.listeners.get(eventType);
     if (callbacks) {
       callbacks.forEach((callback) => {

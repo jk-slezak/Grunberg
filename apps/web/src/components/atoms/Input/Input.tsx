@@ -20,11 +20,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         className={classes}
-        ref={ref} // Assign the forwarded ref here.
+        ref={ref}
         {...props}
       />
     );
-  }
+  },
 );
 
-Input.displayName = "Input"; // Add a display name for better debugging.
+Input.displayName = "Input";

@@ -16,5 +16,3 @@ export const StatBadge = ({ label, value, color = "#6c63ff" }: StatBadgeProps) =
     </div>
   );
 };
-
-

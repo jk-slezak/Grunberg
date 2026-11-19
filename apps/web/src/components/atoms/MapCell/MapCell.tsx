@@ -10,8 +10,6 @@ export interface MapCellProps {
 
 export const MapCell = ({ type, x, y }: MapCellProps) => {
   const className = `${styles["map-cell"]} ${styles[`map-cell--${type}`]}`;
-  
+
   return <div className={className} data-x={x} data-y={y} />;
 };
-
-

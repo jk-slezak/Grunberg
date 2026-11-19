@@ -28,24 +28,9 @@ export const PlayerStats = ({
     <div className={styles["player-stats"]}>
       <div className={styles["player-stats__section"]}>
         <div className={styles["player-stats__bars"]}>
-          <StatusBar
-            label="HP"
-            current={hp.current}
-            max={hp.max}
-            color="#e74c3c"
-          />
-          <StatusBar
-            label="Mana"
-            current={mana.current}
-            max={mana.max}
-            color="#3498db"
-          />
-          <StatusBar
-            label="EXP"
-            current={exp.current}
-            max={exp.max}
-            color="#f39c12"
-          />
+          <StatusBar label="HP" current={hp.current} max={hp.max} color="#e74c3c" />
+          <StatusBar label="Mana" current={mana.current} max={mana.max} color="#3498db" />
+          <StatusBar label="EXP" current={exp.current} max={exp.max} color="#f39c12" />
         </div>
       </div>
 

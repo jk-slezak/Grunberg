@@ -29,5 +29,3 @@ export const StatusBar = ({ current, max, color }: StatusBarProps) => {
     </div>
   );
 };
-
-

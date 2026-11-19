@@ -15,15 +15,8 @@ export const StatGrid = ({ stats }: StatGridProps) => {
   return (
     <div className={styles["stat-grid"]}>
       {stats.map((stat) => (
-        <StatBadge
-          key={stat.label}
-          label={stat.label}
-          value={stat.value}
-          color={stat.color}
-        />
+        <StatBadge key={stat.label} label={stat.label} value={stat.value} color={stat.color} />
       ))}
     </div>
   );
 };
-
-

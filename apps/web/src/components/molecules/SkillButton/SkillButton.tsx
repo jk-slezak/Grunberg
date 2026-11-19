@@ -46,9 +46,7 @@ export const SkillButton = ({
     >
       <span className={styles["skill-button__icon"]}>{icon}</span>
       <span className={styles["skill-button__key"]}>{hotKey}</span>
-      {isOnCooldown && (
-        <div className={styles["skill-button__cooldown"]}>{cooldown}</div>
-      )}
+      {isOnCooldown && <div className={styles["skill-button__cooldown"]}>{cooldown}</div>}
     </button>
   );
 };

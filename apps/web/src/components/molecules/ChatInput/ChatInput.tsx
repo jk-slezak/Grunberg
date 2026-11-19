@@ -8,10 +8,7 @@ export interface ChatInputProps {
   onSendMessage: (message: string) => void;
 }
 
-export const ChatInput = ({ 
-  placeholder = "Wpisz komendę...", 
-  onSendMessage 
-}: ChatInputProps) => {
+export const ChatInput = ({ placeholder = "Wpisz komendę...", onSendMessage }: ChatInputProps) => {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -44,7 +41,7 @@ export const ChatInput = ({
     return () => {
       document.removeEventListener("keydown", handleGlobalKeyDown);
     };
-  }, [handleSend]); // Re-run effect if handleSend changes.
+  }, [handleSend]);
 
   return (
     <div className={styles["chat-input"]}>
@@ -60,5 +57,3 @@ export const ChatInput = ({
     </div>
   );
 };
-
-

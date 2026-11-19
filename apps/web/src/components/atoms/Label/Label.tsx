@@ -7,20 +7,15 @@ export interface LabelProps {
   className?: string;
 }
 
-export const Label = ({ 
-  children, 
-  size = "medium", 
+export const Label = ({
+  children,
+  size = "medium",
   variant = "default",
-  className = "" 
+  className = "",
 }: LabelProps) => {
-  const classes = [
-    styles.label,
-    styles[`label--${size}`],
-    styles[`label--${variant}`],
-    className
-  ].filter(Boolean).join(" ");
+  const classes = [styles.label, styles[`label--${size}`], styles[`label--${variant}`], className]
+    .filter(Boolean)
+    .join(" ");
 
   return <span className={classes}>{children}</span>;
 };
-
-

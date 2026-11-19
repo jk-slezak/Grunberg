@@ -8,22 +8,14 @@ export interface MessageBubbleProps {
   animate?: boolean;
 }
 
-export const MessageBubble = ({ 
-  text, 
-  type, 
-  animate = true 
-}: MessageBubbleProps) => {
+export const MessageBubble = ({ text, type, animate = true }: MessageBubbleProps) => {
   const classes = [
     styles["message-bubble"],
     styles[`message-bubble--${type}`],
-    animate ? styles["message-bubble--animated"] : ""
-  ].filter(Boolean).join(" ");
+    animate ? styles["message-bubble--animated"] : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
-  return (
-    <div className={classes}>
-      {text}
-    </div>
-  );
+  return <div className={classes}>{text}</div>;
 };
-
-
