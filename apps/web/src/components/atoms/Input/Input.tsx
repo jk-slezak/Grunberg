@@ -17,13 +17,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       .filter(Boolean)
       .join(" ");
 
-    return (
-      <input
-        className={classes}
-        ref={ref}
-        {...props}
-      />
-    );
+    return <input className={classes} ref={ref} {...props} />;
   },
 );
 

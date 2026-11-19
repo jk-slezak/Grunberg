@@ -33,7 +33,6 @@ export const characterSchema = z.object({
     ),
 });
 
-
 export const intentSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("move"), direction: z.enum(["north", "south", "east", "west"]) }),
   z.object({ type: z.literal("equip"), itemId: z.string().min(1).max(MAX_ID_LENGTH) }),
