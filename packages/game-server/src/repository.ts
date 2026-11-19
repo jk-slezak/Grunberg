@@ -22,7 +22,10 @@ export interface GameRepository {
   deleteInactive(before: Date): Promise<number>;
 }
 
+/** Used in tests and in development without DATABASE_URL. The clock is injectable for tests. */
 export class InMemoryGameRepository implements GameRepository {
+  constructor(private readonly now: () => number = Date.now) {}
+
   private games = new Map<string, StoredGame>();
   private log = new Map<string, GameEvent[]>();
   private updatedAt = new Map<string, number>();
@@ -31,7 +34,7 @@ export class InMemoryGameRepository implements GameRepository {
     const game = { id: randomUUID(), state, version: 0 };
     this.games.set(game.id, game);
     this.log.set(game.id, [...events]);
-    this.updatedAt.set(game.id, Date.now());
+    this.updatedAt.set(game.id, this.now());
     return game;
   }
 
@@ -47,7 +50,7 @@ export class InMemoryGameRepository implements GameRepository {
     const next = { id, state, version: expectedVersion + 1 };
     this.games.set(id, next);
     this.log.get(id)!.push(...events);
-    this.updatedAt.set(id, Date.now());
+    this.updatedAt.set(id, this.now());
     return next;
   }
 

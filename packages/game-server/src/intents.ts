@@ -22,11 +22,9 @@ export const intentToAction = (state: GameState, intent: Intent): GameStateActio
       if (!tile || tile.type === "wall") throw new IntentRejected("You can't go that way");
       return { type: "UPDATE_POSITION", payload: target };
     }
-    case "equip": {
-      const slot = state.inventory.items.find((s) => s.item.id === intent.itemId);
-      if (!slot) throw new IntentRejected("You don't have that item");
-      return { type: "EQUIP_ITEM", payload: { item: slot.item } };
-    }
+    // Ownership, item type and level are checked by the engine (no effect -> 422).
+    case "equip":
+      return { type: "EQUIP_ITEM", payload: { itemId: intent.itemId } };
     case "unequip":
       return { type: "UNEQUIP_ITEM", payload: { slot: intent.slot } };
   }

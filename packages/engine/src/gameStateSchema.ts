@@ -30,7 +30,7 @@ const armor = z.object({
   ...itemBase,
   type: z.literal("armor"),
   defense: count,
-  slot: z.enum(["weapon", "head", "chest", "legs", "feet", "accessory"]),
+  slot: z.enum(["head", "chest", "legs", "feet", "accessory"]),
   requiredLevel: count,
 });
 const consumable = z.object({

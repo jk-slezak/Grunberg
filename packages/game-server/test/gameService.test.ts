@@ -8,6 +8,8 @@ import {
   getGame,
   InMemoryGameRepository,
   IntentRejected,
+  MAX_ACTIONS_PER_GAME,
+  NoEffect,
   performIntent,
   StaleVersion,
   type Intent,
@@ -42,7 +44,7 @@ describe("gameService", () => {
   let repo: InMemoryGameRepository;
 
   beforeEach(() => {
-    repo = new InMemoryGameRepository();
+    repo = new InMemoryGameRepository(() => NOW);
   });
 
   const newGame = async (onFloorAtX?: number) => {
@@ -101,7 +103,14 @@ describe("gameService", () => {
   it("rejects equipping an item the player doesn't own", async () => {
     const { id } = await newGame();
     const intent: Intent = { type: "equip", itemId: "legendary_sword" };
-    await expect(performIntent(repo, id, 0, intent, NOW)).rejects.toBeInstanceOf(IntentRejected);
+    await expect(performIntent(repo, id, 0, intent, NOW)).rejects.toBeInstanceOf(NoEffect);
+  });
+
+  it("stops accepting actions once a game reaches its length limit", async () => {
+    const { id, state, version } = await newGame(0);
+    for (let v = version; v < MAX_ACTIONS_PER_GAME; v++) await repo.save(id, v, state, []);
+
+    await expect(move(id, MAX_ACTIONS_PER_GAME, "east")).rejects.toThrow("length limit");
   });
 
   it("rejects a stale version and returns the current game", async () => {
@@ -116,18 +125,18 @@ describe("gameService", () => {
 
   it("treats games inactive for more than 24 hours as gone", async () => {
     const { id } = await newGame(0);
-    const later = Date.now() + GAME_TTL_MS + 1000;
+    const later = NOW + GAME_TTL_MS + 1000;
 
     await expect(getGame(repo, id, later)).rejects.toBeInstanceOf(GameNotFound);
     await expect(
       performIntent(repo, id, 1, { type: "move", direction: "east" }, later),
     ).rejects.toBeInstanceOf(GameNotFound);
-    expect((await getGame(repo, id, Date.now())).id).toBe(id);
+    expect((await getGame(repo, id, NOW)).id).toBe(id);
   });
 
   it("deletes expired games", async () => {
     const { id } = await newGame();
-    expect(await repo.deleteInactive(new Date(Date.now() + 1000))).toBe(1);
+    expect(await repo.deleteInactive(new Date(NOW + 1000))).toBe(1);
     await expect(getGame(repo, id, NOW)).rejects.toBeInstanceOf(GameNotFound);
   });
 

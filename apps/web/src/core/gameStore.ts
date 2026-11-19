@@ -13,13 +13,13 @@ export interface GameStore {
 
 interface GameStoreOptions {
   initialState: GameState;
-  emit: (event: GameEvent) => void;
+  emit?: (event: GameEvent) => void;
   now?: () => number;
 }
 
 export const createGameStore = ({
   initialState,
-  emit,
+  emit = () => {},
   now = Date.now,
 }: GameStoreOptions): GameStore => {
   let state = initialState;

@@ -151,6 +151,13 @@ describe("/api/games routes", () => {
     expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
   });
 
+  it("malformed requests do not use up the global creation limit", async () => {
+    for (let i = 0; i < RULES.createGame.limit; i++) {
+      expect((await createGame(post({}))).status).toBe(400);
+    }
+    expect((await createGame(post({ character }))).status).toBe(201);
+  });
+
   it("reads are not rate limited by the app (Vercel Firewall limits per IP)", async () => {
     const { id } = await newGame();
     for (let i = 0; i < 50; i++) expect((await getGame(request("/"), ctx(id))).status).toBe(200);

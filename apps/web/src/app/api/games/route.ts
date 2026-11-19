@@ -6,8 +6,9 @@ import { getStore } from "@/server/store";
 
 export const POST = (request: Request) =>
   handle(async () => {
-    await rateLimit(RULES.createGame);
     const { character } = await readJson(request, createGameBody);
+    // Counted only after validation: malformed requests must not use up the global quota.
+    await rateLimit(RULES.createGame);
     const game = await createGame(getStore().games, character, Date.now());
     return Response.json(game, { status: 201 });
   });

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useSkillHotkeys } from "../../../hooks/useSkillHotkeys";
+import { useHotkeys } from "../../../hooks/useHotkeys";
 import { SkillButton } from "../../molecules/SkillButton";
 import styles from "./SkillBar.module.css";
 
@@ -17,7 +17,7 @@ export interface SkillBarProps {
 }
 
 export const SkillBar = ({ skills }: SkillBarProps) => {
-  const activeHotKey = useSkillHotkeys(skills);
+  const activeHotKey = useHotkeys(skills.map((s) => ({ key: s.hotKey, onPress: s.onClick })));
 
   return (
     <div className={styles["skill-bar"]}>

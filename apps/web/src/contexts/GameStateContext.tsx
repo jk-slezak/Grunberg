@@ -2,17 +2,14 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { createInitialGameState } from "@grunberg/engine";
-import { gameEventBus } from "../core/GameEventBus";
 import { createGameStore, type GameStore } from "../core/gameStore";
 
 const GameStoreContext = createContext<GameStore | null>(null);
 
 export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const [store] = useState(() =>
-    createGameStore({
-      initialState: createInitialGameState(),
-      emit: (e) => gameEventBus.emit(e.type, e.data as never),
-    }),
+    // No subscribers to engine events in the browser yet; pass `emit` once something listens.
+    createGameStore({ initialState: createInitialGameState(Date.now()) }),
   );
   return <GameStoreContext.Provider value={store}>{children}</GameStoreContext.Provider>;
 };

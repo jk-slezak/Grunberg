@@ -6,6 +6,7 @@ import {
   type Character,
   type GameState,
   type Item,
+  type WeaponItem,
   type Quest,
 } from "../src";
 
@@ -29,7 +30,21 @@ const potion: Item = {
   stackable: true,
   maxStack: 10,
   value: 5,
+  effect: { type: "heal_hp", value: 50 },
 };
+
+const sword = (requiredLevel: number, id = "sword"): WeaponItem => ({
+  id,
+  name: "Sword",
+  type: "weapon",
+  rarity: "common",
+  description: "",
+  stackable: false,
+  value: 10,
+  damage: 5,
+  slot: "weapon",
+  requiredLevel,
+});
 
 const quest: Quest = {
   id: "tower_floor_1",
@@ -149,6 +164,54 @@ describe("applyAction", () => {
   it("uses the injected clock (deterministic)", () => {
     const { events } = applyAction(withHero(), { type: "LOAD_STATE", payload: withHero() }, ctx);
     expect(events).toEqual([{ type: "GAME_LOADED", data: { timestamp: NOW } }]);
+  });
+});
+
+describe("equipment", () => {
+  const withItems = (...items: Item[]) =>
+    items.reduce(
+      (state, item) =>
+        applyAction(state, { type: "ADD_ITEM", payload: { item, quantity: 1 } }, ctx).state,
+      withHero(),
+    );
+  const equip = (state: GameState, itemId: string) =>
+    applyAction(state, { type: "EQUIP_ITEM", payload: { itemId } }, ctx);
+
+  it("moves an owned weapon from the backpack to its slot", () => {
+    const { state, events } = equip(withItems(sword(1)), "sword");
+    expect(state.inventory.equipment.weapon?.id).toBe("sword");
+    expect(state.inventory.items).toEqual([]);
+    expect(events).toEqual([{ type: "ITEM_EQUIPPED", data: { itemId: "sword", slot: "weapon" } }]);
+  });
+
+  it("puts the previously equipped item back in the backpack", () => {
+    let state = equip(withItems(sword(1, "old"), sword(1, "new")), "old").state;
+    state = equip(state, "new").state;
+    expect(state.inventory.equipment.weapon?.id).toBe("new");
+    expect(state.inventory.items.map((s) => s.item.id)).toEqual(["old"]);
+  });
+
+  it("rejects items the player doesn't own, can't wear, or isn't high enough level for", () => {
+    const state = withItems(sword(5, "heavy"), potion);
+    expect(equip(state, "missing").events).toEqual([]);
+    expect(equip(state, "potion").events).toEqual([]);
+    expect(equip(state, "heavy").events).toEqual([]); // level 1 < 5
+  });
+
+  it("unequips into the backpack only when there is room", () => {
+    const equipped = equip(withItems(sword(1)), "sword").state;
+    const { state } = applyAction(
+      equipped,
+      { type: "UNEQUIP_ITEM", payload: { slot: "weapon" } },
+      ctx,
+    );
+    expect(state.inventory.equipment.weapon).toBeNull();
+    expect(state.inventory.items.map((s) => s.item.id)).toEqual(["sword"]);
+
+    const full = { ...equipped, inventory: { ...equipped.inventory, capacity: 0 } };
+    expect(
+      applyAction(full, { type: "UNEQUIP_ITEM", payload: { slot: "weapon" } }, ctx).events,
+    ).toEqual([]);
   });
 });
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
-import { isTypingTarget } from "../services/HotkeyService";
+import { isTypingTarget } from "./useHotkeys";
 
 export const useChatInput = (onSend: (message: string) => void) => {
   const [value, setValue] = useState("");

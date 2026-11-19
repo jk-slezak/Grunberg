@@ -1,13 +1,11 @@
-export type ItemType = "weapon" | "armor" | "consumable" | "quest" | "misc";
-
 export type ItemRarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 
 export type EquipmentSlot = "weapon" | "head" | "chest" | "legs" | "feet" | "accessory";
+export type ArmorSlot = Exclude<EquipmentSlot, "weapon">;
 
-export interface Item {
+interface ItemBase {
   id: string;
   name: string;
-  type: ItemType;
   rarity: ItemRarity;
   description: string;
   stackable: boolean;
@@ -15,21 +13,21 @@ export interface Item {
   value: number;
 }
 
-export interface WeaponItem extends Item {
+export interface WeaponItem extends ItemBase {
   type: "weapon";
   damage: number;
   slot: "weapon";
   requiredLevel: number;
 }
 
-export interface ArmorItem extends Item {
+export interface ArmorItem extends ItemBase {
   type: "armor";
   defense: number;
-  slot: EquipmentSlot;
+  slot: ArmorSlot;
   requiredLevel: number;
 }
 
-export interface ConsumableItem extends Item {
+export interface ConsumableItem extends ItemBase {
   type: "consumable";
   effect: {
     type: "heal_hp" | "heal_mp" | "buff_stat";
@@ -37,6 +35,15 @@ export interface ConsumableItem extends Item {
     duration?: number;
   };
 }
+
+export interface MiscItem extends ItemBase {
+  type: "quest" | "misc";
+}
+
+/** Discriminated by `type`: narrowing on it gives the right fields without casts. */
+export type Item = WeaponItem | ArmorItem | ConsumableItem | MiscItem;
+export type ItemType = Item["type"];
+export type EquippableItem = WeaponItem | ArmorItem;
 
 export interface InventorySlot {
   item: Item;

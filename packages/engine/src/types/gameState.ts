@@ -78,7 +78,7 @@ export interface GameState {
   metadata: GameMetadata;
 }
 
-export const createInitialGameState = (now: number = Date.now()): GameState => ({
+export const createInitialGameState = (now: number): GameState => ({
   character: null,
   characterStatus: null,
   position: {

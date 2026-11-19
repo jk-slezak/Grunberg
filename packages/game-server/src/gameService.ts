@@ -4,10 +4,13 @@ import {
   type Character,
   type GameEvent,
 } from "@grunberg/engine";
-import { GameNotFound, NoEffect, StaleVersion } from "./errors";
+import { GameNotFound, IntentRejected, NoEffect, StaleVersion } from "./errors";
 import { intentToAction } from "./intents";
 import { VersionConflict, type GameRepository, type StoredGame } from "./repository";
 import { activeSince } from "./retention";
+
+/** Caps one game's event log (and the size of GET /events). `version` counts accepted actions. */
+export const MAX_ACTIONS_PER_GAME = 5000;
 import type { Intent } from "./schemas";
 
 export const createGame = async (repo: GameRepository, character: Character, now: number) => {
@@ -47,6 +50,9 @@ export const performIntent = async (
 ): Promise<StoredGame & { events: GameEvent[] }> => {
   const game = await getGame(repo, id, now);
   if (game.version !== expectedVersion) throw new StaleVersion(game);
+  if (game.version >= MAX_ACTIONS_PER_GAME) {
+    throw new IntentRejected("This game has reached its length limit");
+  }
 
   const { state, events } = applyAction(game.state, intentToAction(game.state, intent), { now });
   if (events.length === 0) throw new NoEffect();

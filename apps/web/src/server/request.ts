@@ -3,6 +3,7 @@ import { badRequest, forbidden, payloadTooLarge, unsupportedMediaType } from "./
 
 export const MAX_BODY_BYTES = 16 * 1024;
 
+// Browsers always send Origin on cross-origin POSTs; non-browser clients send none.
 const assertSameOrigin = (request: Request) => {
   const origin = request.headers.get("origin");
   if (origin === null) return;
@@ -15,11 +16,13 @@ const assertSameOrigin = (request: Request) => {
   if (originHost !== new URL(request.url).host) throw forbidden();
 };
 
+// Requiring application/json forces a CORS preflight that "simple" cross-site posts would skip.
 const assertJsonContentType = (request: Request) => {
   const type = request.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
   if (type !== "application/json") throw unsupportedMediaType();
 };
 
+// Counts bytes while reading: Content-Length can be missing or wrong.
 const readLimitedText = async (request: Request, maxBytes: number): Promise<string> => {
   const declared = Number(request.headers.get("content-length"));
   if (declared > maxBytes) throw payloadTooLarge();

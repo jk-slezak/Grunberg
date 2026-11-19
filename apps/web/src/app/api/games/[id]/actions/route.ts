@@ -6,9 +6,10 @@ import { getStore } from "@/server/store";
 
 export const POST = (request: Request, { params }: RouteContext<"/api/games/[id]/actions">) =>
   handle(async () => {
-    await rateLimit(RULES.action);
     const { id } = await readParams(params, gameParams);
     const { expectedVersion, intent } = await readJson(request, actionBody);
+    // Counted only after validation: malformed requests must not use up the global quota.
+    await rateLimit(RULES.action);
     return Response.json(
       await performIntent(getStore().games, id, expectedVersion, intent, Date.now()),
     );

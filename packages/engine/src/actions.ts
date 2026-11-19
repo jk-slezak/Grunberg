@@ -1,6 +1,6 @@
 import type { Character } from "./types/character";
 import type { CharacterStatus, GameState, Position } from "./types/gameState";
-import type { Item } from "./types/inventory";
+import type { EquipmentSlot, Item } from "./types/inventory";
 import type { Quest } from "./types/quest";
 
 export type GameStateAction =
@@ -9,8 +9,8 @@ export type GameStateAction =
   | { type: "UPDATE_POSITION"; payload: Position }
   | { type: "ADD_ITEM"; payload: { item: Item; quantity: number } }
   | { type: "REMOVE_ITEM"; payload: { itemId: string; quantity: number } }
-  | { type: "EQUIP_ITEM"; payload: { item: Item } }
-  | { type: "UNEQUIP_ITEM"; payload: { slot: string } }
+  | { type: "EQUIP_ITEM"; payload: { itemId: string } }
+  | { type: "UNEQUIP_ITEM"; payload: { slot: EquipmentSlot } }
   | { type: "UPDATE_CURRENCY"; payload: { type: "gold" | "gems"; amount: number } }
   | { type: "START_QUEST"; payload: Quest }
   | { type: "UPDATE_QUEST"; payload: { questId: string; updates: Partial<Quest> } }
