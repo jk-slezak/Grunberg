@@ -1,531 +1,236 @@
-Architektura oparta o event-driven + JSON
-Najlepszym rozwiązaniem dla Twojej gry będzie połączenie trzech elementów:
-1. Event-Driven Architecture (EDA) - system oparty na zdarzeniach, gdzie komponenty komunikują się przez zdarzenia zamiast bezpośrednich referencji. To eliminuje tzw. “tight coupling” - sytuację, gdzie każdy system musi znać każdy inny system.
-2. JSON jako format danych - wszystkie dialogi i questy przechowujesz w plikach JSON, oddzielając dane od logiki. Dzięki temu możesz modyfikować treść bez dotykania kodu.
-3. React Context API - do zarządzania stanem globalnym gry (postęp questów, flagi dialogowe, stan dungeonu).
-Struktura questów - podejście komponentowe
-Zamiast monolitycznych definicji questów, użyj modułowej architektury:
+# Architecture
 
-```json
-// questDefinitions.json
-{
-  "quests": {
-    "tower_floor_1": {
-      "id": "tower_floor_1",
-      "title": "Zbadaj pierwsze piętro Mglistej Wieży",
-      "type": "exploration",
-      "components": [
-        {
-          "type": "reach_location",
-          "target": "floor_1_center",
-          "points": 1
-        },
-        {
-          "type": "defeat_enemy",
-          "enemyType": "shadow_guardian",
-          "count": 3,
-          "points": 1
-        }
-      ],
-      "rewards": {
-        "exp": 100,
-        "gold": 50,
-        "item": "ancient_key"
-      },
-      "next_quests": ["tower_floor_2", "mysterious_merchant"]
-    }
-  }
-}
+Grunberg is a TypeScript monorepo. Game rules live in one pure engine, the server is the single source of truth, and the UI only renders state and sends player intents.
+
+> Sections marked **Implemented** describe the code as it is. Sections marked **Planned** describe the agreed design for features that do not exist yet.
+
+## Overview (Implemented)
+
+| Layer                  | Responsibility                                                                                                                                                                               |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/engine`      | Pure game rules: `applyAction(state, action, ctx) → { state, events }`. No I/O, no React; the clock is injected (`ctx.now`). Also holds the shared types, character rules and `gameStateSchema`. |
+| `packages/game-server` | Framework-agnostic use cases (`createGame`, `getGame`, `getEvents`, `performIntent`), domain errors, Zod schemas for requests, Postgres access (Drizzle), rate limits and retention.            |
+| `apps/web`             | Next.js app: UI routes (`/`, `/new`, `/game`) and thin Route Handlers under `/api/games` that call `game-server`.                                                                           |
+
+```mermaid
+flowchart LR
+  P[Player] -->|chat / arrow keys| W[Next.js UI<br/>apps/web]
+  W -->|intent + expectedVersion| R[Route Handlers<br/>/api/games]
+  R --> S[packages/game-server<br/>use cases]
+  C[content<br/>TS data + Zod] -.planned.-> E
+  S --> E[packages/engine<br/>pure rules]
+  E -->|new state + events| S
+  S --> D[(Postgres<br/>sessions + event log)]
+  R -->|state + events| W
 ```
 
-Każdy quest składa się z komponentów (reach_location, defeat_enemy, collect_item, talk_to_npc). To pozwala łatwo tworzyć nowe questy kombinując istniejące komponenty.
-System questów - implementacja event-driven
-Zamiast sprawdzać wszędzie stan questów, użyj centralnego hub’a zdarzeń:
+### Request flow
 
-```js
-// gameEvents.js
-class GameEventBus {
-  constructor() {
-    this.listeners = {};
-  }
-  
-  emit(eventType, data) {
-    if (this.listeners[eventType]) {
-      this.listeners[eventType].forEach(callback => callback(data));
-    }
-  }
-  
-  on(eventType, callback) {
-    if (!this.listeners[eventType]) {
-      this.listeners[eventType] = [];
-    }
-    this.listeners[eventType].push(callback);
-  }
-}
+1. The client sends an **intent**, never a state change: `{ expectedVersion, intent: { type: "move", direction: "east" } }`.
+2. `readJson` (`apps/web/src/server/request.ts`) checks the origin, the content type (`application/json`) and the body size (16 KB), parses the JSON and validates it with the Zod schema.
+3. `performIntent` loads the game, rejects a stale `expectedVersion` (`409` with the current game) and turns the intent into an engine action (`intentToAction`). Illegal intents, like walking into a wall, are rejected (`422`).
+4. The engine computes the new state and events. The repository saves both in one transaction, guarded by `WHERE version = expectedVersion`.
+5. `handle` (`apps/web/src/server/http.ts`) maps domain errors to HTTP status codes in one place. Anything unexpected surfaces as a logged `500`.
 
-export const gameEvents = new GameEventBus();
+Security details (origin and size checks, rate limits, headers, retention) are described once, in the README section "Security model".
 
-// Użycie w grze
-gameEvents.emit('ENEMY_DEFEATED', { 
-  enemyType: 'shadow_guardian',
-  location: 'floor_1'
-});
-```
+## State ownership (Implemented)
 
-QuestManager nasłuchuje tylko tych zdarzeń, które są istotne dla aktywnych questów:
+- **API games:** the server is authoritative. A client can only ask for an intent, so it cannot add items or gold.
+- **In the browser:** `createGameStore` (`apps/web/src/core/gameStore.ts`) runs the same engine locally. Components never touch the store directly; they use hooks:
+  - `useGameState()` returns the current state (via `useSyncExternalStore`, server-render safe);
+  - `useGameActions()` returns stable actions (`createCharacter`, `loadState`, `resetState`).
+- **Why a store instead of React Context with `useReducer`:** every `dispatch` applies the action to the latest state and emits its events immediately, so React batching cannot drop events. Actions without effect do not re-render anything.
+- **Local saves:** `useAutoSave` writes the state to localStorage (debounced). Saves and imported files are validated with `gameStateSchema` before they reach the game.
 
-```js
-// QuestManager.js
-class QuestManager {
-  constructor(questDefinitions) {
-    this.activeQuests = [];
-    this.completedQuests = [];
-    this.questData = questDefinitions;
-    
-    // Rejestruj listenery tylko dla potrzebnych zdarzeń
-    this.setupEventListeners();
-  }
-  
-  setupEventListeners() {
-    gameEvents.on('ENEMY_DEFEATED', (data) => {
-      this.activeQuests.forEach(quest => {
-        quest.components.forEach(component => {
-          if (component.type === 'defeat_enemy' && 
-              component.enemyType === data.enemyType) {
-            this.updateQuestProgress(quest.id, component);
-          }
-        });
-      });
-    });
-    
-    gameEvents.on('LOCATION_REACHED', (data) => {
-      // podobna logika dla lokacji
-    });
-  }
-  
-  updateQuestProgress(questId, component) {
-    component.currentProgress = (component.currentProgress || 0) + 1;
-    
-    if (component.currentProgress >= component.count) {
-      gameEvents.emit('QUEST_COMPONENT_COMPLETED', { 
-        questId, 
-        component 
-      });
-      this.checkQuestCompletion(questId);
-    }
-  }
-}
-```
+> The game screen does not call the API yet. Connecting it (TanStack Query, optimistic updates, rollback on `409`/`422`) is the next roadmap item.
 
-Klucz do sukcesu: QuestManager nie wie nic o CombatSystem, PlayerSystem czy DungeonGenerator. Zna tylko zdarzenia. To oznacza, że możesz zmienić całą implementację walki, a QuestManager dalej będzie działał.
-System dialogów - state machine + JSON
-Dialogi to w istocie maszyny stanów (state machines). Każda wypowiedź to stan, a wybory gracza to przejścia między stanami.
-Struktura JSON dla dialogów:
+## Events (Implemented)
 
-```json
-// dialogues.json
-{
-  "npc_merchant": {
-    "initial": "greeting",
-    "nodes": {
-      "greeting": {
-        "speaker": "Merchant",
-        "text": "Witaj wędrowcze. Czego potrzebujesz?",
-        "choices": [
-          {
-            "text": "Szukam informacji o wieży",
-            "nextNode": "tower_info",
-            "conditions": {
-              "hasQuest": "tower_floor_1"
-            }
-          },
-          {
-            "text": "Chcę kupić ekwipunek",
-            "nextNode": "shop"
-          },
-          {
-            "text": "Do widzenia",
-            "nextNode": "farewell"
-          }
-        ]
-      },
-      "tower_info": {
-        "speaker": "Merchant",
-        "text": "Mglistą Wieżą rządzi pradawna magia. Każdej nocy jej korytarze zmieniają układ.",
-        "choices": [
-          {
-            "text": "Kontynuuj",
-            "nextNode": "tower_info_2"
-          }
-        ]
-      },
-      "tower_info_2": {
-        "speaker": "Merchant",
-        "text": "Mówią, że na szczycie znajduje się artefakt wielkim mocy...",
-        "effects": [
-          {
-            "type": "update_quest",
-            "questId": "tower_floor_1",
-            "componentId": "talk_to_merchant"
-          }
-        ],
-        "choices": [
-          {
-            "text": "Wracam do poprzedniego tematu",
-            "nextNode": "greeting"
-          }
-        ]
-      }
-    }
-  }
-}
-```
-
-DialogueManager w React z Context API:
-
-```js
-// DialogueContext.js
-const DialogueContext = createContext();
-
-export function DialogueProvider({ children, dialogueData }) {
-  const [currentDialogue, setCurrentDialogue] = useState(null);
-  const [currentNode, setCurrentNode] = useState(null);
-  const [dialogueHistory, setDialogueHistory] = useState([]);
-  
-  const startDialogue = (npcId) => {
-    const dialogue = dialogueData[npcId];
-    setCurrentDialogue(dialogue);
-    setCurrentNode(dialogue.nodes[dialogue.initial]);
-  };
-  
-  const makeChoice = (choiceIndex) => {
-    const choice = currentNode.choices[choiceIndex];
-    
-    // Sprawdź warunki
-    if (choice.conditions) {
-      const meetsConditions = evaluateConditions(choice.conditions);
-      if (!meetsConditions) return;
-    }
-    
-    // Wykonaj efekty
-    if (currentNode.effects) {
-      currentNode.effects.forEach(effect => {
-        gameEvents.emit('DIALOGUE_EFFECT', effect);
-      });
-    }
-    
-    // Przejdź do następnego node'a
-    const nextNode = currentDialogue.nodes[choice.nextNode];
-    setCurrentNode(nextNode);
-    
-    // Dodaj do historii
-    setDialogueHistory([...dialogueHistory, currentNode]);
-  };
-  
-  return (
-    <DialogueContext.Provider value={{
-      currentDialogue,
-      currentNode,
-      startDialogue,
-      makeChoice
-    }}>
-      {children}
-    </DialogueContext.Provider>
-  );
-}
-```
-
-Graf zależności questów
-Dla bardziej złożonych fabularnych zależności użyj dependency graph. To struktura danych pokazująca, które questy odblokowują inne questy:
-
-```json
-// questDependencies.json
-{
-  "dependencies": {
-    "tower_floor_1": [],
-    "tower_floor_2": ["tower_floor_1"],
-    "mysterious_merchant": ["tower_floor_1"],
-    "ancient_artifact": ["tower_floor_2", "mysterious_merchant"]
-  }
-}
-```
-
-```js
-// QuestDependencyManager.js
-class QuestDependencyManager {
-  constructor(dependencies) {
-    this.graph = dependencies;
-  }
-  
-  canStartQuest(questId, completedQuests) {
-    const requirements = this.graph[questId];
-    return requirements.every(req => completedQuests.includes(req));
-  }
-  
-  getAvailableQuests(completedQuests) {
-    return Object.keys(this.graph).filter(questId => 
-      this.canStartQuest(questId, completedQuests) &&
-      !completedQuests.includes(questId)
-    );
-  }
-}
-```
-
-Proceduralna generacja dungeonu a questy
-Dla proceduralnie generowanych pięter musisz oddzielić semantyczny layout od fizycznego:
-
-```js
-// DungeonGenerator.js
-class DungeonGenerator {
-  generateFloor(floorNumber, questData) {
-    // 1. Wygeneruj semantyczny graf
-    const semanticGraph = this.generateSemanticGraph(questData);
-    // semanticGraph = {
-    //   nodes: [
-    //     { id: 'entrance', type: 'spawn' },
-    //     { id: 'boss_room', type: 'boss', quest: 'tower_floor_1' },
-    //     { id: 'merchant_room', type: 'npc', npcId: 'merchant' }
-    //   ],
-    //   edges: [ /* połączenia */ ]
-    // }
-    
-    // 2. Przekształć w fizyczny layout
-    const physicalLayout = this.layoutAlgorithm(semanticGraph);
-    
-    // 3. Wypełnij szczegóły (enemies, loot, traps)
-    const dungeon = this.populateDungeon(physicalLayout);
-    
-    return dungeon;
-  }
-  
-  generateSemanticGraph(questData) {
-    // Tutaj uwzględniasz wymagania aktywnych questów
-    // np. jeśli quest wymaga boss_room, dodaj node boss_room
-  }
-}
-```
-
-Ta separacja pozwala Ci zmieniać fizyczny układ co noc (proceduralna generacja), ale zachować semantyczne wymagania questów.
-Praktyczne wskazówki
-1. Walidacja danych przy starcie gry
-Zrób prosty walidator JSON-ów na początku:
-
-```js
-function validateQuestData(questData) {
-  for (const quest of Object.values(questData.quests)) {
-    // Sprawdź czy wszystkie next_quests istnieją
-    if (quest.next_quests) {
-      quest.next_quests.forEach(nextId => {
-        if (!questData.quests[nextId]) {
-          console.error(`Quest ${quest.id} references non-existent quest ${nextId}`);
-        }
-      });
-    }
-  }
-}
-```
-
-2. Narzędzie do debugowania
-Dodaj overlay pokazujący aktywne eventy i stan questów:
-
-```js
-// DebugPanel.jsx
-function DebugPanel() {
-  const [events, setEvents] = useState([]);
-  
-  useEffect(() => {
-    const listener = (eventType, data) => {
-      setEvents(prev => [...prev.slice(-20), { eventType, data, time: Date.now() }]);
-    };
-    
-    gameEvents.on('*', listener); // asterisk = wszystkie eventy
-  }, []);
-  
-  return (
-    <div className="debug-panel">
-      {events.map(e => (
-        <div key={e.time}>{e.eventType}: {JSON.stringify(e.data)}</div>
-      ))}
-    </div>
-  );
-}
-```
-
-3. TypeScript dla type safety
-Jeśli używasz TypeScript, zdefiniuj typy dla swoich struktur:
+The engine returns events as plain data instead of emitting them:
 
 ```ts
-interface QuestComponent {
-  type: 'defeat_enemy' | 'reach_location' | 'collect_item' | 'talk_to_npc';
-  currentProgress?: number;
-  points: number;
-}
+import { applyAction, createInitialGameState } from "@grunberg/engine";
 
-interface Quest {
-  id: string;
-  title: string;
-  type: 'main' | 'side' | 'exploration';
-  components: QuestComponent[];
-  rewards: Rewards;
-  next_quests?: string[];
-}
+const now = Date.now();
+const { state, events } = applyAction(
+  createInitialGameState(now),
+  { type: "UPDATE_CURRENCY", payload: { type: "gold", amount: 50 } },
+  { now },
+);
+// state.inventory.currency.gold === 50
+// events: [{ type: "CURRENCY_CHANGED", data: { type: "gold", amount: 50 } }]
+// The event reports the amount that actually changed: spending more gold than
+// the player has clamps gold at 0, and the event reports the real difference.
 ```
 
-4. Testowanie
-Dla questów napisz proste testy jednostkowe:
+- On the server, events are stored in the append-only `game_events` table, which makes a session replayable and debuggable.
+- In the browser, the store publishes them on `gameEventBus` (`apps/web/src/core/GameEventBus.ts`), so systems like quests or sound can react without knowing about each other.
 
-```js
-describe('QuestManager', () => {
-  test('should update progress on enemy defeated', () => {
-    const manager = new QuestManager(testQuestData);
-    manager.startQuest('test_quest');
-    
-    gameEvents.emit('ENEMY_DEFEATED', { 
-      enemyType: 'goblin' 
-    });
-    
-    const quest = manager.getActiveQuest('test_quest');
-    expect(quest.components[0].currentProgress).toBe(1);
-  });
-});
+Systems that listen to events stay decoupled: a quest system only cares that `ENEMY_DEFEATED` happened, not how combat works.
+
+## Persistence and retention (Implemented)
+
+| Table           | Contents                                                                     |
+| --------------- | ---------------------------------------------------------------------------- |
+| `game_sessions` | game state (`jsonb`), `version` for optimistic locking, `updated_at`         |
+| `game_events`   | append-only event log per session (deleted with the session)                 |
+| `rate_limits`   | global fixed-window counters per rule (e.g. `create-game:global`), no client data |
+
+- Migrations live in `packages/game-server/drizzle/` (`npm run db:migrate --workspace @grunberg/game-server`).
+- A server copy expires **24 hours after its last change**. Every read passes `activeSince(now)`, so an expired game is `404` right away. The daily cron (`/api/cron/cleanup`, protected by `CRON_SECRET`) deletes the rows.
+- The player's long-term copy is the local save.
+
+## Content model (Planned)
+
+Dialogues and quests are **plain TypeScript data validated with Zod**:
+
+- they will live in `packages/engine/src/content/` (not created yet);
+- they are typed with `satisfies`, so the editor checks fields and autocompletes ids;
+- a unit test validates all content with the Zod schemas and checks cross-references (e.g. `nextQuestIds` point to existing quests).
+
+Conditions and effects are **declarative data interpreted by the engine**, not functions. Content therefore stays serializable: the server can store an in-progress dialogue in the game state and replay it from the event log.
+
+### Quests: built from components
+
+A quest is a list of small, reusable components (`reach_location`, `defeat_enemy`, `collect_item`, `talk_to_npc`). New quests are combinations of existing components.
+
+```ts
+import type { Quest } from "@grunberg/engine";
+
+export const towerFloor1 = {
+  id: "tower_floor_1",
+  title: "Explore the first floor of the Tower of Mist",
+  description: "Explore the first floor and defeat the shadow guard",
+  type: "exploration",
+  status: "available",
+  components: [
+    {
+      id: "reach_center",
+      type: "reach_location",
+      targetId: "floor_1_center",
+      count: 1,
+      currentProgress: 0,
+      description: "Reach the center of the floor",
+    },
+    {
+      id: "defeat_guardians",
+      type: "defeat_enemy",
+      targetId: "shadow_guardian",
+      count: 3,
+      currentProgress: 0,
+      description: "Defeat 3 shadow guardians",
+    },
+  ],
+  rewards: { exp: 100, gold: 50, items: ["ancient_key"] },
+  nextQuestIds: ["tower_floor_2", "mysterious_merchant"],
+} satisfies Quest;
 ```
 
-Inspiracja z anime
-Dla tematyki inspirowanej “That Time I Got Reincarnated as a Slime”, możesz dodać system nazwanych przeciwników i unique encounters:
+Quest progress is driven by engine events: when `ENEMY_DEFEATED` matches a `defeat_enemy` component of an active quest, the engine advances its `currentProgress` and emits `QUEST_PROGRESS_UPDATED`, and `QUEST_COMPLETED` once every component is done.
 
-```json
-// W definicji questów
-{
-  "quest_named_monster": {
-    "id": "quest_named_monster",
-    "title": "Pokonaj Veldorę Burzotwórcę",
-    "components": [
-      {
-        "type": "defeat_unique_boss",
-        "bossId": "veldora",
-        "floorRange": [5, 10], // pojawi się losowo między 5 a 10 piętrem
-        "dialogue": "veldora_encounter"
-      }
-    ]
-  }
-}
-```
+### Dialogues: state machines
 
-Podsumowanie - architektura bez błędów
-Twoja architektura powinna wyglądać tak:
-	1.	JSON files → Definicje questów i dialogów (łatwa rozbudowa)
-	2.	GameEventBus → Centralna komunikacja między systemami
-	3.	QuestManager → Nasłuchuje eventów, aktualizuje postęp
-	4.	DialogueManager → Maszyna stanów dla dialogów
-	5.	DungeonGenerator → Generuje piętra respektując wymagania questów
-	6.	React Context → Stan globalny UI i danych gracza
-Dlaczego to działa:
-	•	Modyfikujesz questy w JSON → zero zmian w kodzie
-	•	Dodajesz nowy typ eventu → jeden nowy listener w QuestManager
-	•	Zmieniasz combat system → quest system dalej działa, bo słucha tylko eventów
-	•	Dialogi w osobnych plikach → łatwe tłumaczenia i edycja bez programisty
-Ten system używają profesjonalne studia i jest sprawdzony w produkcji. Powodzenia z Mglistą Wieżą!
+Every line is a node, and the player's choices are transitions. Conditions and effects are data:
 
----
+```ts
+type Condition = { type: "hasQuest"; questId: string } | { type: "flag"; flagId: string };
+type Effect = { type: "updateQuest"; questId: string; componentId: string };
 
-***Bardzo ważne!***
-
-***Dialogi i questy powinny być budowane z użyciem funkcji w TypeScript zamiast surowych JSON-ów***. To podejście daje kilka zalet:
-
-### Korzyści z używania TypeScript i funkcji do tworzenia dialogów i questów
-- **Typowanie i autouzupełnianie** — dzięki TypeScript masz pewność, że struktura questów i dialogów jest poprawna, a edytor podpowiada właściwe pola i typy.
-- **Większa elastyczność** — możesz tworzyć dynamiczne fragmenty dialogów lub questów, które zmieniają się w zależności od logiki (np. warunki, losowość).
-- **Uniknięcie powtarzalnego kodu** — funkcje pozwalają tworzyć szablony, skróty lub nawet kompozycje questów/dialogów.
-- **Łatwiejsze refaktoryzacje i debugowanie** — przyczyna błędów jest często łatwiejsza do znalezienia w kodzie niż w surowym JSON-ie.
-
-### Przykład dialogu w TypeScript jako funkcje
-
-```typescript
 interface DialogueNode {
-  id: string;
   speaker: string;
   text: string;
-  choices?: DialogueChoice[];
-  effects?: (() => void)[];
+  choices: { text: string; next: string; condition?: Condition }[];
+  effects?: Effect[];
 }
 
-interface DialogueChoice {
-  text: string;
-  nextNodeId: string;
-  condition?: () => boolean;
+interface Dialogue {
+  initial: string;
+  nodes: Record<string, DialogueNode>;
 }
 
-function createMerchantDialogue(): Record<string, DialogueNode> {
-  return {
+export const merchantDialogue = {
+  initial: "greeting",
+  nodes: {
     greeting: {
-      id: "greeting",
       speaker: "Merchant",
-      text: "Witaj wędrowcze. Czego potrzebujesz?",
+      text: "Greetings, traveler. What do you need?",
       choices: [
         {
-          text: "Szukam informacji o wieży",
-          nextNodeId: "tower_info",
-          condition: () => playerHasQuest("tower_floor_1")
+          text: "I'm looking for information about the tower",
+          next: "tower_info",
+          condition: { type: "hasQuest", questId: "tower_floor_1" },
         },
-        { text: "Chcę kupić ekwipunek", nextNodeId: "shop" },
-        { text: "Do widzenia", nextNodeId: "farewell" }
-      ]
+        { text: "I want to buy equipment", next: "shop" },
+        { text: "Goodbye", next: "farewell" },
+      ],
     },
     tower_info: {
-      id: "tower_info",
       speaker: "Merchant",
-      text: "Mglistą Wieżą rządzi pradawna magia. Każdej nocy jej korytarze zmieniają układ.",
-      choices: [{ text: "Kontynuuj", nextNodeId: "tower_info_2" }]
+      text: "An ancient magic rules the Tower of Mist. Every night its corridors change their layout.",
+      choices: [{ text: "Go on", next: "tower_info_2" }],
     },
     tower_info_2: {
-      id: "tower_info_2",
       speaker: "Merchant",
-      text: "Mówią, że na szczycie znajduje się artefakt o wielkiej mocy...",
-      effects: [() => updateQuestProgress("tower_floor_1", "talk_to_merchant")],
-      choices: [{ text: "Wracam do poprzedniego tematu", nextNodeId: "greeting" }]
-    }
-  };
-}
+      text: "They say an artifact of great power lies at the top...",
+      effects: [{ type: "updateQuest", questId: "tower_floor_1", componentId: "talk_to_merchant" }],
+      choices: [{ text: "Back to what we were talking about", next: "greeting" }],
+    },
+  },
+} satisfies Dialogue;
 ```
 
-### Przykład questu jako funkcji
+The dialogue position (current node, choices made) becomes part of `GameState` (`dialogueHistory` already exists). Choosing an answer is an intent like any other, validated by the server.
 
-```typescript
-type QuestComponentType = "reach_location" | "defeat_enemy" | "collect_item";
+### Quest dependency graph
 
-interface QuestComponent {
-  type: QuestComponentType;
-  targetId: string;
-  count: number;
-  currentProgress: number;
-}
+Which quests unlock which:
 
-interface Quest {
-  id: string;
-  title: string;
-  components: QuestComponent[];
-  rewards: { exp: number; gold: number };
-  nextQuestIds?: string[];
-}
+```ts
+export const questDependencies: Record<string, string[]> = {
+  tower_floor_1: [],
+  tower_floor_2: ["tower_floor_1"],
+  mysterious_merchant: ["tower_floor_1"],
+  ancient_artifact: ["tower_floor_2", "mysterious_merchant"],
+};
 
-function createTowerFloor1Quest(): Quest {
-  return {
-    id: "tower_floor_1",
-    title: "Zbadaj pierwsze piętro Mglistej Wieży",
-    components: [
-      { type: "reach_location", targetId: "floor_1_center", count: 1, currentProgress: 0 },
-      { type: "defeat_enemy", targetId: "shadow_guardian", count: 3, currentProgress: 0 }
-    ],
-    rewards: { exp: 100, gold: 50 },
-    nextQuestIds: ["tower_floor_2"]
-  };
-}
+export const availableQuests = (completed: string[]): string[] =>
+  Object.entries(questDependencies)
+    .filter(([id, requires]) => !completed.includes(id) && requires.every((r) => completed.includes(r)))
+    .map(([id]) => id);
 ```
 
-### Integracja z React
+### Procedural floors and quests
 
-W React możesz importować te fabryki questów i dialogów, korzystać z nich i łączyć z Context API lub stanem komponentów. Logika i dane są wtedy ściśle powiązane i typowane.
+Generation separates the **semantic** layout from the **physical** one:
 
-***
+1. **Semantic graph:** which rooms must exist and how they connect, including what active quests need (e.g. a boss room, the merchant's room).
+2. **Physical layout:** turning the graph into tiles (`DungeonFloor.tiles`) from a seed.
+3. **Population:** enemies, loot and traps.
 
-Podsumowując, stosowanie funkcji i TypeScript zamiast surowych JSON-ów pozwala na bardziej dynamiczne, bezpieczne i programistyczne podejście do tworzenia rozbudowanych questów i dialogów w grze RPG.
+The physical layout can change every night (a new seed) while the quest requirements still hold. Generation is a pure function of `(seed, floorNumber, quests)`, so the server and tests always get the same floor for the same input.
+
+### Practical rules
+
+- **Validate content in a test**, not at runtime in the browser: schemas plus cross-reference checks fail CI instead of breaking a player's game.
+- **Debug through events:** the event log (`GET /api/games/:id/events`) shows exactly what happened in a session.
+- **Test rules in the engine:** quest progress, dialogue transitions and generation are pure functions, unit-tested like `applyAction` today.
+
+## Anime inspiration
+
+For themes inspired by "That Time I Got Reincarnated as a Slime", you can add named enemies and unique encounters:
+
+```ts
+export const questNamedMonster = {
+  id: "quest_named_monster",
+  title: "Defeat Veldora the Storm Dragon",
+  components: [
+    {
+      type: "defeat_unique_boss",
+      bossId: "veldora",
+      floorRange: [5, 10], // appears at random between floors 5 and 10
+      dialogue: "veldora_encounter",
+    },
+  ],
+};
+```

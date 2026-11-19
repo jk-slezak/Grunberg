@@ -1,47 +1,42 @@
-# Gra tekstowa RPG dungeon crawler
+# Text-based RPG dungeon crawler
 
-## Założenia:
+## Status
 
-- użytkownik może tworzyć postać krótkim formularzem
+**Working today:**
 
-- jest system dialogów i zadań
+- character creator (race, gender, class, stat points)
+- main menu: new game, continue, load a save file
+- game screen layout: chat, minimap, player stats, skills and action buttons (with placeholder data)
+- local autosave in localStorage and save file import
+- the game API: creating a game and server-validated player intents (`move`, `equip`, `unequip`)
 
-- Gra to dungeon crawler o wielu piętrach, które często zmieniają układ i kolejność
+**Planned:** everything else below. The roadmap in the README tracks the order.
 
-- Wszystko w klimacie RPG fantasy
+## Assumptions
 
-- System zapisu w localstorage
+- the player creates a character with a short form
+- there is a dialogue and quest system
+- the game is a dungeon crawler with many floors whose layout and order change often (procedural floors from a seed)
+- everything is set in a fantasy RPG world
+- the player's own copy of the game is the local save (localStorage); the server copy expires 24 hours after the last change
+- save files can be exported and imported
 
-- Możliwość eksportu/importu pliku zapisu
+## Planned UI
 
-## UI przewiduje:
+- chat (the main descriptive and dialogue feature)
+- a map drawn live as the player moves
+- quest window
+- health, mana and experience bars
+- character progression window
+- stats window
+- equipment and backpack window
+- combat system (4+ actions, as in Nintendo's Pokémon games)
+- movement with the arrow keys
+- choosing the active quest ???
+- soundtracks that build the atmosphere
+- UI lighting effects (like Ambilight on TVs)
 
-- czat (główna funcjonalność opisowa i dialogowa)
+## Story themes under consideration
 
-- rysowanie mapy na bieżąco w drodze
-
-- okno zadań
-
-- paski zdrowia many i doświadczenia
-
-- okno rozwoju postaci
-
-- okno statystyk
-
-- okno ekwipunku i plecaka
-
-- system walki (4+ akcje jak w pokemonach nintendo)
-
-- poruszanie się strzałkami
-
-- Wybór aktywnego zadania ???
-
-- soundtracki oddające atmosferę dla zwiększenia klimatu
-
-- efekty świetlne UI (jak ambilight w telewizorach)
-
-## Biorę pod uwagę tematy fabularne:
-
-- Wieża z mgły — magiczna konstrukcja, której kształt zmienia się co noc
-
-- dungeon jak w anime 'that time i was reincarnated as a slime'
+- The Tower of Mist: a magical structure whose shape changes every night
+- a dungeon like the one in the anime "That Time I Got Reincarnated as a Slime"

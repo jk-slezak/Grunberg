@@ -1,358 +1,184 @@
-# Atomic Design w Grunberg
+# Atomic Design in Grunberg
 
-## Wprowadzenie
+## Introduction
 
-Projekt Grunberg wykorzystuje metodologię **Atomic Design** do organizacji komponentów UI. Ta metodologia dzieli interfejs użytkownika na hierarchię od najmniejszych, najbardziej podstawowych elementów (atomów) do złożonych, w pełni funkcjonalnych komponentów (organizmów).
+Grunberg organizes its UI components with the **Atomic Design** methodology: a hierarchy from the smallest elements (atoms) to complete sections of the interface (organisms) and page layouts (templates).
 
-## Struktura katalogów
+## Directory structure
 
 ```
-src/components/
-├── atoms/              # Podstawowe, niepodzielne elementy UI
-├── molecules/          # Proste grupy atomów tworzące funkcjonalne jednostki
-├── organisms/          # Złożone komponenty łączące atomy i molekuły
-├── Layout/            # Komponenty layoutu i szablonów
-└── [Inne komponenty]  # Pozostałe komponenty niezrefaktoryzowane
+apps/web/src/
+├── components/
+│   ├── atoms/        # Basic, indivisible UI elements
+│   ├── molecules/    # Small groups of atoms that form a functional unit
+│   ├── organisms/    # Complete interface sections
+│   ├── templates/    # Page layouts that place organisms
+│   └── CharacterCreator.tsx   # not yet split into the hierarchy
+├── screens/          # Connect hooks (state, actions) to components
+├── hooks/            # Reusable UI logic (autosave, saved game)
+├── contexts/         # Game store provider and its hooks
+└── app/              # Next.js routes: thin page.tsx files and API Route Handlers
 ```
 
-## Poziomy Atomic Design
+## Components by level
 
-### 1. Atoms (Atomy)
+### Atoms
 
-Najdrobniejsze, niepodzielne elementy interfejsu. Są to podstawowe bloki budulcowe, które samodzielnie mają ograniczoną funkcjonalność, ale stanowią fundament dla bardziej złożonych komponentów.
+**Location:** `apps/web/src/components/atoms/`
 
-**Lokalizacja:** `src/components/atoms/`
+| Component       | Props                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| `Button`        | `variant?: "primary" \| "secondary" \| "ghost"`, `size?: "small" \| "medium" \| "large"`, `icon?: ReactNode`, `children`, plus all `<button>` attributes |
+| `Input`         | `variant?: "default" \| "dark"`, `error?: boolean`, plus all `<input>` attributes                |
+| `Label`         | `children`, `size?: "small" \| "medium" \| "large"`, `variant?: "default" \| "uppercase"`, `className?` |
+| `MapCell`       | `type: "wall" \| "explored" \| "unexplored" \| "player"`, `x?`, `y?`                             |
+| `MessageBubble` | `text: string`, `type: "narration" \| "action" \| "dialogue" \| "system"`, `animate?: boolean`   |
+| `StatBadge`     | `label: string`, `value: number \| string`, `color?: string`                                     |
 
-#### Button
-Uniwersalny przycisk z różnymi wariantami i rozmiarami.
+```tsx
+import { Button } from "@/components/atoms/Button";
 
-```typescript
-import { Button } from "../components/atoms/Button/Button";
-
-<Button variant="primary" size="medium" icon={<Icon />}>
-  Kliknij mnie
-</Button>
+export const StartButton = () => (
+  <Button variant="primary" size="medium">
+    Click me
+  </Button>
+);
 ```
 
-**Props:**
-- `variant`: `"primary" | "secondary" | "ghost"` - styl przycisku
-- `size`: `"small" | "medium" | "large"` - rozmiar
-- `icon`: `ReactNode` - opcjonalna ikona
-- `children`: `ReactNode` - zawartość przycisku
+### Molecules
 
-#### Input
-Pole tekstowe z wariantami stylistycznymi.
+**Location:** `apps/web/src/components/molecules/`
 
-```typescript
-import { Input } from "../components/atoms/Input/Input";
+| Component         | Props                                                                                             | Made of            |
+| ----------------- | ------------------------------------------------------------------------------------------------- | ------------------ |
+| `ActionButton`    | `label`, `icon: ReactNode`, `hotKey`, `onClick?`, `isActive?`                                      | button, icon       |
+| `ChatInput`       | `placeholder?`, `onSendMessage: (message: string) => void`                                         | `Input`            |
+| `CurrencyDisplay` | `amount: number`, `icon?`, `label?`                                                                | –                  |
+| `InfoField`       | `label`, `value: string \| number`, `valueColor?`                                                  | –                  |
+| `MessageList`     | `messages: { id, type, text }[]`                                                                   | `MessageBubble`    |
+| `SkillButton`     | `name`, `icon: ReactNode`, `hotKey`, `cooldown?`, `onClick?`, `isActive?`                          | button, icon       |
+| `StatGrid`        | `stats: { label, value, color? }[]`                                                                | `StatBadge`        |
+| `StatusBar`       | `label`, `current`, `max`, `color`                                                                 | –                  |
 
-<Input 
-  variant="dark" 
-  placeholder="Wpisz tekst..." 
-  error={false}
-/>
+### Organisms
+
+**Location:** `apps/web/src/components/organisms/`
+
+| Component           | Props                                                                     | Made of                       |
+| ------------------- | ------------------------------------------------------------------------- | ----------------------------- |
+| `ActionButtonGroup` | `buttons: { id, label, icon, hotKey, onClick?, isActive? }[]`              | `ActionButton`                |
+| `Chat`              | –                                                                         | `MessageList`, `ChatInput`    |
+| `GameHeader`        | `level?`, `location?`, `title?`                                           | –                             |
+| `MainMenu`          | `onNewGame`, `onContinue`, `onLoadSave: (file: File) => Promise<void>`     | buttons, `useSavedGame`       |
+| `Minimap`           | `gridSize?`, `playerPosition?`, `title?`                                  | `MapCell`                     |
+| `PlayerStats`       | `hp?`, `mana?`, `exp?`, `stats?`, `gold?`                                  | `StatusBar`, `StatGrid`, `CurrencyDisplay` |
+| `SkillBar`          | `skills: { id, name, hotKey, icon, cooldown?, onClick? }[]`                | `SkillButton`                 |
+
+### Templates
+
+| Component    | Responsibility                                                                                      |
+| ------------ | --------------------------------------------------------------------------------------------------- |
+| `GameLayout` | Places the header, chat, minimap, player stats, skill bar and action buttons in the game screen grid. |
+
+## Where logic lives
+
+- **Components render; hooks hold logic.** State, side effects and data access live in hooks:
+  - `useGameState()` returns the game state;
+  - `useGameActions()` returns stable actions;
+  - `useSavedGame()` reads the local save;
+  - `useAutoSave()` saves the game (debounced).
+- **Screens connect the two.** `screens/MenuScreen.tsx`, `NewCharacterScreen.tsx` and `GameScreen.tsx` call hooks and pass data and callbacks down. `app/*/page.tsx` files only render a screen.
+- **Current exceptions**, to be moved into hooks:
+  - `Chat` keeps its message list in local state with placeholder messages;
+  - `ChatInput` and `SkillBar` register keyboard shortcuts in effects;
+  - `CharacterCreator` holds the whole form state.
+
+```tsx
+"use client";
+
+import { useRouter } from "next/navigation";
+import type { Character } from "@grunberg/engine";
+import CharacterCreator from "@/components/CharacterCreator";
+import { useGameActions } from "@/contexts/useGameActions";
+
+// A screen: hooks in, plain props out.
+export const NewCharacterScreen = () => {
+  const router = useRouter();
+  const { createCharacter } = useGameActions();
+
+  const handleCharacterCreated = (character: Character) => {
+    createCharacter(character);
+    router.push("/game");
+  };
+
+  return <CharacterCreator onCharacterCreated={handleCharacterCreated} />;
+};
 ```
 
-**Props:**
-- `variant`: `"default" | "dark"` - styl pola
-- `error`: `boolean` - czy pole ma błąd
-- Wszystkie standardowe atrybuty HTML input
+## Atomic Design principles
 
-#### MessageBubble
-Pojedyncza wiadomość w czacie.
+1. **Single responsibility:** every component has one clearly defined job.
+2. **Composition over inheritance:** complex components are built by composing simpler ones.
+3. **Reusability:** atoms and molecules stay generic; organisms may be specific to the game.
+4. **Logic separate from presentation:** atoms and molecules are presentational. Organisms may hold UI-only state (e.g. which skill is highlighted), while game state and side effects live in hooks.
+5. **No props drilling:** screens read state through hooks instead of passing it through many levels.
 
-```typescript
-import { MessageBubble } from "../components/atoms/MessageBubble/MessageBubble";
+## Conventions
 
-<MessageBubble 
-  text="Witaj w Mglistej Wieży..." 
-  type="narration" 
-  animate={true}
-/>
-```
+### Files and folders
 
-**Props:**
-- `text`: `string` - treść wiadomości
-- `type`: `"narration" | "action" | "dialogue" | "system"` - typ wiadomości
-- `animate`: `boolean` - czy animować pojawienie się
-
----
-
-### 2. Molecules (Molekuły)
-
-Grupy atomów tworzące prostsze funkcjonalne komponenty. Molekuły łączą kilka atomów, tworząc bardziej użyteczną jednostkę.
-
-**Lokalizacja:** `src/components/molecules/`
-
-#### ChatInput
-Pole tekstowe do wprowadzania komend w czacie.
-
-```typescript
-import { ChatInput } from "../components/molecules/ChatInput/ChatInput";
-
-<ChatInput 
-  placeholder="Wpisz komendę..." 
-  onSendMessage={(message) => console.log(message)}
-/>
-```
-
-**Props:**
-- `placeholder`: `string` - tekst placeholder
-- `onSendMessage`: `(message: string) => void` - callback po wysłaniu wiadomości
-
-**Składa się z:**
-- `Input` (atom)
-- Własna logika obsługi Enter i wysyłania
-
-#### MessageList
-Lista wiadomości w czacie.
-
-```typescript
-import { MessageList } from "../components/molecules/MessageList/MessageList";
-
-const messages = [
-  { id: 1, type: "narration", text: "Witaj..." },
-  { id: 2, type: "action", text: "Rozglądasz się..." }
-];
-
-<MessageList messages={messages} />
-```
-
-**Props:**
-- `messages`: `Message[]` - tablica wiadomości
-
-**Składa się z:**
-- Wiele `MessageBubble` (atom)
-- Kontener ze scrollem
-
-#### ActionButton
-Przycisk akcji z ikoną i skrótem klawiszowym.
-
-```typescript
-import { ActionButton } from "../components/molecules/ActionButton/ActionButton";
-
-<ActionButton 
-  label="Questy" 
-  icon="📜" 
-  shortcutKey="Q"
-  onClick={() => console.log("Otwarto questy")}
-  isActive={false}
-/>
-```
-
-**Props:**
-- `label`: `string` - etykieta przycisku
-- `icon`: `string` - ikona (emoji lub znak)
-- `shortcutKey`: `string` - skrót klawiszowy
-- `onClick`: `() => void` - callback przy kliknięciu
-- `isActive`: `boolean` - czy przycisk jest aktywny
-
-#### SkillButton
-Przycisk umiejętności z cooldownem.
-
-```typescript
-import { SkillButton } from "../components/molecules/SkillButton/SkillButton";
-
-<SkillButton 
-  name="Atak" 
-  icon="⚔️" 
-  shortcutKey="1"
-  cooldown={0}
-  onClick={() => console.log("Użyto ataku")}
-/>
-```
-
-**Props:**
-- `name`: `string` - nazwa umiejętności
-- `icon`: `string` - ikona
-- `shortcutKey`: `string` - skrót klawiszowy
-- `cooldown`: `number` - czas cooldownu (0 = dostępne)
-- `onClick`: `() => void` - callback przy użyciu
-
----
-
-### 3. Organisms (Organizmy)
-
-Złożone komponenty łączące atomy i molekuły w w pełni funkcjonalne sekcje interfejsu. Organizmy reprezentują wyraźne sekcje aplikacji.
-
-**Lokalizacja:** `src/components/organisms/`
-
-#### Chat
-Kompletny system czatu z historią wiadomości i polem do wprowadzania tekstu.
-
-```typescript
-import { Chat } from "../components/organisms/Chat/Chat";
-
-<Chat />
-```
-
-**Składa się z:**
-- `MessageList` (molekuła)
-- `ChatInput` (molekuła)
-- Stan wiadomości i logika zarządzania
-
-#### ActionButtonGroup
-Grupa przycisków akcji (questy, mapa, statystyki, ekwipunek).
-
-```typescript
-import { ActionButtonGroup } from "../components/organisms/ActionButtonGroup/ActionButtonGroup";
-
-const buttons = [
-  { id: 1, label: "Questy", icon: "📜", key: "Q" },
-  { id: 2, label: "Mapa", icon: "🗺️", key: "M" }
-];
-
-<ActionButtonGroup buttons={buttons} />
-```
-
-**Props:**
-- `buttons`: `ActionButtonData[]` - tablica definicji przycisków
-
-**Składa się z:**
-- Wiele `ActionButton` (molekuła)
-- Grid layout
-
-#### SkillBar
-Pasek umiejętności gracza.
-
-```typescript
-import { SkillBar } from "../components/organisms/SkillBar/SkillBar";
-
-const skills = [
-  { id: 1, name: "Atak", key: "1", icon: "⚔️", cooldown: 0 },
-  { id: 2, name: "Magia", key: "3", icon: "✨", cooldown: 3 }
-];
-
-<SkillBar skills={skills} title="Umiejętności" />
-```
-
-**Props:**
-- `skills`: `Skill[]` - tablica umiejętności
-- `title`: `string` - tytuł sekcji (domyślnie "Umiejętności")
-
-**Składa się z:**
-- Wiele `SkillButton` (molekuła)
-- Tytuł i layout
-
----
-
-## Zasady stosowania Atomic Design
-
-### 1. Pojedyncza odpowiedzialność
-Każdy komponent powinien mieć jedną, jasno określoną odpowiedzialność.
-
-### 2. Kompozycja zamiast dziedziczenia
-Buduj złożone komponenty poprzez komponowanie prostszych, nie przez dziedziczenie.
-
-### 3. Reużywalność
-Atomy i molekuły powinny być maksymalnie ogólne i reużywalne. Organizmy mogą być bardziej specyficzne dla konkretnego kontekstu.
-
-### 4. Separacja logiki i prezentacji
-- **Atomy** - tylko prezentacja, żadnej logiki biznesowej
-- **Molekuły** - minimalna logika UI (np. obsługa formularzy)
-- **Organizmy** - mogą zawierać logikę biznesową i zarządzanie stanem
-
-### 5. Props drilling
-Unikaj nadmiernego przekazywania props przez wiele poziomów. W razie potrzeby użyj Context API lub state management.
-
----
-
-## Konwencje nazewnictwa
-
-### Pliki i foldery
 ```
 ComponentName/
-├── ComponentName.tsx    # Komponent
-└── ComponentName.css    # Style
+├── ComponentName.tsx          # Component
+├── ComponentName.module.css   # Styles (CSS Modules)
+└── index.ts                   # Re-export
 ```
 
-### Komponenty
-- **PascalCase** dla nazw komponentów: `Button`, `ChatInput`, `MessageBubble`
-- **camelCase** dla props: `onClick`, `isActive`, `shortcutKey`
+### Naming
 
-### Style CSS
-- **BEM notation** dla klas CSS:
-  - `.component` - blok
-  - `.component__element` - element
-  - `.component--modifier` - modyfikator
+- **PascalCase** for components: `Button`, `ChatInput`, `MessageBubble`
+- **camelCase** for props: `onClick`, `isActive`, `hotKey`
+- **CSS Modules with BEM-style class names**, scoped per component:
 
-Przykład:
 ```css
-.action-button { }
-.action-button__icon { }
-.action-button__label { }
-.action-button--active { }
+.action-button {
+}
+.action-button__icon {
+}
+.action-button--active {
+}
 ```
 
----
+```tsx
+import styles from "./GameLayout.module.css";
 
-## Migracja istniejących komponentów
+export const Header = () => <header className={styles["game-layout__header"]} />;
+```
 
-Komponenty, które zostały już zrefaktoryzowane:
+## Example: GameLayout
 
-✅ **Chat** → `organisms/Chat`
-✅ **ActionButtons** → `organisms/ActionButtonGroup`
-✅ **SkillBar** → `organisms/SkillBar`
-✅ **GameHeader** → `organisms/GameHeader`
-✅ **HUD** → `organisms/PlayerStats`
-✅ **Minimap** → `organisms/Minimap`
-✅ **StatusBar** → `molecules/StatusBar`
+`apps/web/src/components/templates/GameLayout/GameLayout.tsx` (shortened):
 
-Komponenty oczekujące na refaktoryzację:
-- CharacterSheet
-- Inventory
-- Combat
+```tsx
+import { GiScrollQuill, GiSwordsPower } from "react-icons/gi";
+import { ActionButtonGroup } from "../../organisms/ActionButtonGroup";
+import { Chat } from "../../organisms/Chat";
+import { SkillBar } from "../../organisms/SkillBar";
+import styles from "./GameLayout.module.css";
 
----
-
-## Przykład użycia w GameLayout
-
-```typescript
-import { Chat } from "../../organisms/Chat/Chat";
-import { SkillBar } from "../../organisms/SkillBar/SkillBar";
-import { ActionButtonGroup } from "../../organisms/ActionButtonGroup/ActionButtonGroup";
-import { Minimap } from "../../organisms/Minimap/Minimap";
-import { GameHeader } from "../../organisms/GameHeader/GameHeader";
-import { PlayerStats } from "../../organisms/PlayerStats/PlayerStats";
-
-const GameLayout = () => {
-  const actionButtons = [
-    { id: 1, label: "Questy", icon: "📜", key: "Q" },
-    { id: 2, label: "Mapa", icon: "🗺️", key: "M" },
-    { id: 3, label: "Statystyki", icon: "📊", key: "C" },
-    { id: 4, label: "Ekwipunek", icon: "🎒", key: "I" },
-  ];
-
-  const skills = [
-    { id: 1, name: "Atak", key: "1", icon: "⚔️", cooldown: 0 },
-    { id: 2, name: "Obrona", key: "2", icon: "🛡️", cooldown: 0 },
-    { id: 3, name: "Magia", key: "3", icon: "✨", cooldown: 3 },
-    { id: 4, name: "Unik", key: "4", icon: "💨", cooldown: 0 },
-  ];
+export const GameLayout = () => {
+  const actionButtons = [{ id: 1, label: "Quests", icon: <GiScrollQuill />, hotKey: "Q" }];
+  const skills = [{ id: 1, name: "Attack", hotKey: "1", icon: <GiSwordsPower />, cooldown: 0 }];
 
   return (
-    <div className="game-layout">
-      <header className="game-layout__header">
-        <GameHeader level={1} location="Mglisty Portal - Piętro 1" />
-      </header>
-
-      <aside className="game-layout__minimap">
-        <Minimap />
-      </aside>
-
-      <main className="game-layout__chat">
+    <div className={styles["game-layout"]}>
+      <main className={styles["game-layout__chat"]}>
         <Chat />
       </main>
-
-      <aside className="game-layout__hud">
-        <PlayerStats />
-      </aside>
-
-      <section className="game-layout__skills">
+      <section className={styles["game-layout__skills"]}>
         <SkillBar skills={skills} />
       </section>
-
-      <nav className="game-layout__navigation">
+      <nav className={styles["game-layout__navigation"]}>
         <ActionButtonGroup buttons={actionButtons} />
       </nav>
     </div>
@@ -360,45 +186,37 @@ const GameLayout = () => {
 };
 ```
 
----
+> The UI labels in the code are still in Polish ("Questy", "Atak"); they will be translated together with the game texts.
 
-## Testowanie
+## Testing
 
-Każdy poziom Atomic Design testujemy inaczej:
+**Today:**
 
-### Atomy
-- Testy jednostkowe renderowania
-- Testy props i wariantów
-- Testy accessibility (a11y)
+- unit tests for the game store, save validation, server request handling and every API route (Vitest);
+- no component tests yet.
 
-### Molekuły
-- Testy integracyjne atomów
-- Testy interakcji użytkownika
-- Testy callbacks
+**Planned (see the README roadmap):**
 
-### Organizmy
-- Testy e2e scenariuszy użytkownika
-- Testy stanu i logiki biznesowej
-- Testy integracji z API (jeśli dotyczy)
+| Level     | Tests                                                                          |
+| --------- | ------------------------------------------------------------------------------ |
+| Atoms     | rendering, props and variants, accessibility (axe)                             |
+| Molecules | user interaction and callbacks                                                 |
+| Organisms | Storybook stories; Playwright e2e for the main flows (menu → new game → game) |
 
----
+## Benefits of Atomic Design in Grunberg
 
-## Korzyści z Atomic Design w Grunberg
+1. **Consistency:** the same look and behavior across the app
+2. **Reusability:** components are easy to use in new contexts
+3. **Maintainability:** changes to atoms propagate automatically
+4. **Scalability:** new features are assembled from existing pieces
+5. **Testability:** small, isolated components are easier to test
+6. **Documentation:** the hierarchy makes the structure easy to understand
 
-1. **Konsystencja** - jednolity wygląd i zachowanie w całej aplikacji
-2. **Reużywalność** - komponenty można łatwo wykorzystać w różnych kontekstach
-3. **Łatwość utrzymania** - zmiany w atomach propagują się automatycznie
-4. **Skalowalność** - łatwo dodawać nowe funkcjonalności
-5. **Testowanie** - izolowane komponenty są łatwiejsze do testowania
-6. **Dokumentacja** - hierarchia ułatwia zrozumienie struktury
+## Next steps
 
----
-
-## Dalsze kroki
-
-1. Refaktoryzacja pozostałych komponentów do struktury Atomic Design
-2. Dodanie Storybook dla dokumentacji wizualnej komponentów
-3. Implementacja testów jednostkowych dla atomów i molekuł
-4. Utworzenie design system guide z paletą kolorów i typografią
-5. Rozważenie użycia CSS-in-JS lub CSS Modules dla lepszej izolacji stylów
-
+1. Build the missing organisms: CharacterSheet, Inventory, Combat
+2. Split `CharacterCreator` into the hierarchy, with its form logic in a hook
+3. Move the remaining component state into hooks (chat messages, keyboard shortcuts)
+4. Translate the UI labels to English
+5. Add Storybook and component tests (axe, Playwright)
+6. Write a design system guide (color palette, typography)

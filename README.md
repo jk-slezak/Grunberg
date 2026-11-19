@@ -8,7 +8,7 @@ A single-player, text-based RPG dungeon crawler that runs in the browser: a chat
 
 ## Core idea: content as data, the engine decides
 
-- **Story is data.** Dialogues and quests live in JSON files validated with Zod. Content changes without touching code.
+- **Story is data.** Dialogues and quests are plain TypeScript data validated with Zod: typed and autocompleted in the editor, checked in CI, and serializable, with no logic inside. Content changes without touching game rules.
 - **The engine decides.** All rules live in a pure TypeScript engine: `(state, action) → { state, events }`. The server runs it and is the single source of truth. The client only sends **intents** (`move east`, `equip sword`), never state changes, so it can't cheat.
 - **The UI tells the story.** Engine events (`ENEMY_DEFEATED`, `QUEST_COMPLETED`…) become chat narration, map updates and HUD changes.
 
@@ -17,7 +17,7 @@ flowchart LR
   P[Player] -->|chat / arrow keys| W[Next.js UI<br/>apps/web]
   W -->|intent + expectedVersion| R[Route Handlers<br/>/api/games]
   R --> S[packages/game-server<br/>use cases]
-  C[content/<br/>JSON dialogues, quests] --> E
+  C[content<br/>TS data + Zod] --> E
   S --> E[packages/engine<br/>pure rules]
   E -->|new state + events| S
   S --> D[(Postgres<br/>sessions + event log)]
@@ -94,7 +94,7 @@ Without `DATABASE_URL` the API refuses to run in production instead of silently 
 - [x] Authoritative game API, Postgres persistence, event log, optimistic locking
 - [x] Next.js App Router: menu, character creator and game as routes; the API as Route Handlers
 - [ ] Web ↔ API with TanStack Query: optimistic updates with rollback on `409`/`422`; state survives refreshes and devices
-- [ ] Content as data: JSON dialogues and quests validated with Zod; narration generated from engine events
+- [ ] Content as data: dialogues and quests as TypeScript data validated with Zod; narration generated from engine events
 - [ ] Procedural dungeon floors from a seed, minimap with fog of war, arrow-key movement
 - [ ] Combat (4 actions), inventory and equipment, quest log
 - [ ] Accessibility: full keyboard play, `aria-live` narration, focus management, `prefers-reduced-motion`; axe checks
