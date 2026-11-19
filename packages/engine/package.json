@@ -1,0 +1,19 @@
+{
+  "name": "@grunberg/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure, deterministic game rules for Grunberg. No I/O, no React.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "lint:types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "fast-check": "^3.23.2",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

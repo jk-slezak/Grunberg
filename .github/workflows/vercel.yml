@@ -11,9 +11,9 @@ on:
       - master
 
 jobs:
-  # Type checking and linting job
+  # Type checking, linting and tests for every workspace (web, api, engine)
   check:
-    name: Type Check & Lint
+    name: Type Check, Lint & Test
     runs-on: ubuntu-latest
     
     steps:
@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -33,7 +33,10 @@ jobs:
         run: npm run lint:types
 
       - name: Run ESLint
-        run: npm run lint:eslint
+        run: npm run lint:eslint --workspace @grunberg/web
+
+      - name: Run tests
+        run: npm test
 
   # Build job
   build:
@@ -48,7 +51,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -61,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: dist/
+          path: apps/web/dist/
           retention-days: 7
 
   # Deploy job (only on push to main/master)
@@ -85,7 +88,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install Vercel CLI

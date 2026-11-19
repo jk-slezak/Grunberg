@@ -4,14 +4,14 @@ import type {
   Race,
   CharacterStats,
   CharacterClass,
-} from "../types/character";
+} from "@grunberg/engine";
 import {
   RACES,
   RACE_BASE_STATS,
   INITIAL_STAT_POINTS,
   MIN_STAT_VALUE,
   MAX_STAT_VALUE,
-} from "../types/character";
+} from "@grunberg/engine";
 import "./CharacterCreator.css";
 
 interface CharacterCreatorProps {

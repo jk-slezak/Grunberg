@@ -78,7 +78,7 @@ export interface GameState {
   metadata: GameMetadata;
 }
 
-export const createInitialGameState = (): GameState => ({
+export const createInitialGameState = (now: number = Date.now()): GameState => ({
   character: null,
   characterStatus: null,
   position: {
@@ -114,9 +114,9 @@ export const createInitialGameState = (): GameState => ({
   dialogueHistory: [],
   metadata: {
     saveVersion: "1.0.0",
-    lastSaved: Date.now(),
+    lastSaved: now,
     playtime: 0,
-    createdAt: Date.now(),
+    createdAt: now,
   },
 });
 

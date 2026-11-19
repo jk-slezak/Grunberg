@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { GameState } from "../types/gameState";
+import type { GameState } from "@grunberg/engine";
 import { SaveService } from "../services/SaveService";
 import { gameEventBus } from "../core/GameEventBus";
 

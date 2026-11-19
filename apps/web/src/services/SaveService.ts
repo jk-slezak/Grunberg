@@ -1,4 +1,4 @@
-import type { GameState } from "../types/gameState";
+import type { GameState } from "@grunberg/engine";
 
 const SAVE_KEY = "grunberg_save";
 const SAVE_VERSION = "1.0.0";

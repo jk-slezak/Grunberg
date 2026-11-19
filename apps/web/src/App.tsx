@@ -5,7 +5,7 @@ import { MainMenu } from "./components/organisms/MainMenu";
 import { useGameState } from "./contexts/useGameState";
 import { SaveService } from "./services/SaveService";
 import { useAutoSave } from "./hooks/useAutoSave";
-import type { Character } from "./types/character";
+import type { Character } from "@grunberg/engine";
 import { GameLayout } from "./components/templates/GameLayout";
 
 type GameScreen = "menu" | "character-creator" | "game";
