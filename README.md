@@ -72,7 +72,8 @@ npm run db:generate --workspace @grunberg/game-server   # writes a new migration
 - **No personal data on the server.** No accounts, no IPs (not even hashed), no cookies. The only free text is the character name.
 - **Rate limits without tracking anyone:**
   - per-IP limits are enforced by Vercel Firewall at the edge, so IPs never reach our database;
-  - the app adds global write limits in Postgres (game creation 300/hour, actions 3000/min) that protect the free-tier database quota. Over the limit the API answers `429` with `Retry-After`.
+  - the app adds global write limits in Postgres (game creation 300/hour, actions 600/min) that protect the free-tier database quota. Only valid requests count, so malformed traffic cannot use up the quota. Over the limit the API answers `429` with `Retry-After`.
+  - one game accepts at most 5000 actions, which also bounds the size of its event log.
 - **Server copies of games expire 24 h after the last change.** Expiry is checked on every read, and a daily cron (`/api/cron/cleanup`, protected by `CRON_SECRET`) deletes the rows. The local save (autosave, export) is the player's own long-term copy.
 - **Headers:** CSP (`'self'` only; inline scripts are allowed because pages are statically prerendered), `frame-ancestors 'none'`, `nosniff`, `Permissions-Policy`, no `X-Powered-By`, `Cache-Control: no-store` on the API.
 - **Local saves and imported save files** are validated against the same `gameStateSchema` (bounded sizes, 1 MB file limit) before they reach the game.

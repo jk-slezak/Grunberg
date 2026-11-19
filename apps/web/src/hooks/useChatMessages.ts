@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
-import type { Message } from "../components/molecules/MessageList";
+import type { ChatMessage } from "../chat/types";
 
-const INITIAL_MESSAGES: Message[] = [
+const INITIAL_MESSAGES: ChatMessage[] = [
   { id: 1, type: "narration", text: "Witaj w Mglistej Wieży..." },
   { id: 2, type: "action", text: "Rozglądasz się wokół." },
   {
@@ -12,11 +12,11 @@ const INITIAL_MESSAGES: Message[] = [
 ];
 
 export const useChatMessages = () => {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const nextId = useRef(INITIAL_MESSAGES.length + 1);
 
   const sendMessage = useCallback((text: string) => {
-    const message: Message = { id: nextId.current++, type: "action", text };
+    const message: ChatMessage = { id: nextId.current++, type: "action", text };
     setMessages((current) => [...current, message]);
   }, []);
 

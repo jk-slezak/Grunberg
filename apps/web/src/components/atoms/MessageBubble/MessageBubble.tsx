@@ -1,6 +1,6 @@
 import styles from "./MessageBubble.module.css";
 
-export type MessageType = "narration" | "action" | "dialogue" | "system";
+import type { MessageType } from "../../../chat/types";
 
 export interface MessageBubbleProps {
   text: string;

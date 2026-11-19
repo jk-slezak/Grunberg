@@ -157,6 +157,7 @@
 }
 
 .saveInfo {
+  display: block;
   font-size: 0.85rem;
   color: #c4b5fd;
   margin-top: 0.3rem;

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
 import Image from "next/image";
+import { useSaveFilePicker } from "../../../hooks/useSaveFilePicker";
 import { useSavedGame } from "../../../hooks/useSavedGame";
 import styles from "./MainMenu.module.css";
 import menuBgImage from "../../../assets/images/menu_bg.png";
@@ -14,8 +14,7 @@ interface MainMenuProps {
 
 export const MainMenu = ({ onNewGame, onContinue, onLoadSave }: MainMenuProps) => {
   const { hasSave, savedAt: saveTimestamp } = useSavedGame();
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { inputRef, open, onFileChange, error } = useSaveFilePicker(onLoadSave);
 
   const handleNewGameClick = () => {
     if (hasSave) {
@@ -27,28 +26,6 @@ export const MainMenu = ({ onNewGame, onContinue, onLoadSave }: MainMenuProps) =
       }
     }
     onNewGame();
-  };
-
-  const handleLoadSaveClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setError(null);
-      try {
-        await onLoadSave(file);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load save file");
-      }
-    }
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
   };
 
   const formatTimestamp = (timestamp: number): string => {
@@ -79,7 +56,9 @@ export const MainMenu = ({ onNewGame, onContinue, onLoadSave }: MainMenuProps) =
             >
               Continue
               {saveTimestamp && (
-                <div className={styles.saveInfo}>Last saved: {formatTimestamp(saveTimestamp)}</div>
+                <span className={styles.saveInfo}>
+                  Last saved: {formatTimestamp(saveTimestamp)}
+                </span>
               )}
             </button>
 
@@ -108,14 +87,14 @@ export const MainMenu = ({ onNewGame, onContinue, onLoadSave }: MainMenuProps) =
           </>
         )}
 
-        <button type="button" className={styles.menuButton} onClick={handleLoadSaveClick}>
+        <button type="button" className={styles.menuButton} onClick={open}>
           Load Save File
         </button>
         <input
-          ref={fileInputRef}
+          ref={inputRef}
           type="file"
           accept=".json"
-          onChange={handleFileChange}
+          onChange={onFileChange}
           className={styles.fileInput}
         />
       </div>

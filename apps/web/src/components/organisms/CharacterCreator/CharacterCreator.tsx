@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 import { CLASSES, MAX_NAME_LENGTH, RACES, type Character } from "@grunberg/engine";
-import { useCharacterForm, type StatName } from "../hooks/useCharacterForm";
-import "./CharacterCreator.css";
+import { useCharacterForm, type StatName } from "../../../hooks/useCharacterForm";
+import styles from "./CharacterCreator.module.css";
 
 interface CharacterCreatorProps {
   onCharacterCreated: (character: Character) => void;
@@ -9,7 +9,10 @@ interface CharacterCreatorProps {
 
 const STAT_NAMES: StatName[] = ["strength", "agility", "intelligence"];
 
-export default function CharacterCreator({ onCharacterCreated }: CharacterCreatorProps) {
+const optionClass = (selected: boolean) =>
+  selected ? `${styles.option} ${styles.selected}` : styles.option;
+
+export const CharacterCreator = ({ onCharacterCreated }: CharacterCreatorProps) => {
   const form = useCharacterForm();
 
   const handleSubmit = (e: FormEvent) => {
@@ -19,13 +22,14 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
   };
 
   return (
-    <div className="character-creator">
+    <div className={styles["character-creator"]}>
       <h1>Create Your Character</h1>
       <form onSubmit={handleSubmit}>
-        <div className="form-section">
+        <div className={styles["form-section"]}>
           <label htmlFor="character-name">Name:</label>
           <input
             id="character-name"
+            className={styles["name-input"]}
             type="text"
             value={form.name}
             onChange={(e) => form.setName(e.target.value)}
@@ -34,14 +38,14 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
           />
         </div>
 
-        <div className="form-section">
+        <div className={styles["form-section"]}>
           <label>Race:</label>
-          <div className="race-selection">
+          <div className={styles.options}>
             {RACES.map((r) => (
               <button
                 key={r}
                 type="button"
-                className={`race-button ${form.race === r ? "selected" : ""}`}
+                className={optionClass(form.race === r)}
                 onClick={() => form.selectRace(r)}
               >
                 {r}
@@ -50,19 +54,19 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
           </div>
         </div>
 
-        <div className="form-section">
+        <div className={styles["form-section"]}>
           <label>Gender:</label>
-          <div className="race-selection">
+          <div className={styles.options}>
             <button
               type="button"
-              className={`race-button ${form.gender ? "selected" : ""}`}
+              className={optionClass(form.gender)}
               onClick={() => form.setGender(true)}
             >
               Male
             </button>
             <button
               type="button"
-              className={`race-button ${!form.gender ? "selected" : ""}`}
+              className={optionClass(!form.gender)}
               onClick={() => form.setGender(false)}
             >
               Female
@@ -70,14 +74,14 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
           </div>
         </div>
 
-        <div className="form-section">
+        <div className={styles["form-section"]}>
           <label>Class:</label>
-          <div className="race-selection">
+          <div className={styles.options}>
             {CLASSES.map((cls) => (
               <button
                 key={cls}
                 type="button"
-                className={`race-button ${form.characterClass === cls ? "selected" : ""}`}
+                className={optionClass(form.characterClass === cls)}
                 onClick={() => form.setCharacterClass(cls)}
               >
                 {cls}
@@ -86,26 +90,28 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
           </div>
         </div>
 
-        <div className="form-section">
+        <div className={styles["form-section"]}>
           <label>Stats (Points remaining: {form.remainingPoints}):</label>
-          <div className="stats-container">
+          <div className={styles["stats-container"]}>
             {STAT_NAMES.map((stat) => (
-              <div key={stat} className="stat-row">
-                <span className="stat-name">{stat.charAt(0).toUpperCase() + stat.slice(1)}:</span>
+              <div key={stat} className={styles["stat-row"]}>
+                <span className={styles["stat-name"]}>
+                  {stat.charAt(0).toUpperCase() + stat.slice(1)}:
+                </span>
                 <button
                   type="button"
                   onClick={() => form.decreaseStat(stat)}
                   disabled={!form.canDecrease(stat)}
-                  className="stat-button"
+                  className={styles["stat-button"]}
                 >
                   -
                 </button>
-                <span className="stat-value">{form.stats[stat]}</span>
+                <span className={styles["stat-value"]}>{form.stats[stat]}</span>
                 <button
                   type="button"
                   onClick={() => form.increaseStat(stat)}
                   disabled={!form.canIncrease(stat)}
-                  className="stat-button"
+                  className={styles["stat-button"]}
                 >
                   +
                 </button>
@@ -114,10 +120,10 @@ export default function CharacterCreator({ onCharacterCreated }: CharacterCreato
           </div>
         </div>
 
-        <button type="submit" disabled={!form.isValid} className="submit-button">
+        <button type="submit" disabled={!form.isValid} className={styles["submit-button"]}>
           Create Character
         </button>
       </form>
     </div>
   );
-}
+};

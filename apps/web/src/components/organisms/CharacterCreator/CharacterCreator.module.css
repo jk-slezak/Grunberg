@@ -13,7 +13,7 @@
   font-weight: bold;
 }
 
-#character-name {
+.name-input {
   width: 100%;
   padding: 0.5rem;
   font-size: 1rem;
@@ -23,13 +23,13 @@
   color: inherit;
 }
 
-.race-selection {
+.options {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0.5rem;
 }
 
-.race-button {
+.option {
   padding: 0.75rem;
   border: 2px solid #646cff;
   border-radius: 4px;
@@ -39,11 +39,11 @@
   transition: all 0.2s;
 }
 
-.race-button:hover {
+.option:hover {
   background-color: rgba(100, 108, 255, 0.1);
 }
 
-.race-button.selected {
+.option.selected {
   background-color: #646cff;
   color: white;
 }

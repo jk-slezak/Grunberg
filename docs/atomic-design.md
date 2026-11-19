@@ -13,7 +13,6 @@ apps/web/src/
 │   ├── molecules/    # Small groups of atoms that form a functional unit
 │   ├── organisms/    # Complete interface sections
 │   ├── templates/    # Page layouts that place organisms
-│   └── CharacterCreator.tsx   # not yet split into the hierarchy
 ├── screens/          # Connect hooks (state, actions) to components
 ├── hooks/            # Reusable UI logic (autosave, saved game)
 ├── contexts/         # Game store provider and its hooks
@@ -69,7 +68,8 @@ export const StartButton = () => (
 | `ActionButtonGroup` | `buttons: { id, label, icon, hotKey, onClick?, isActive? }[]`              | `ActionButton`                |
 | `Chat`              | –                                                                         | `MessageList`, `ChatInput`    |
 | `GameHeader`        | `level?`, `location?`, `title?`                                           | –                             |
-| `MainMenu`          | `onNewGame`, `onContinue`, `onLoadSave: (file: File) => Promise<void>`     | buttons, `useSavedGame`       |
+| `MainMenu`          | `onNewGame`, `onContinue`, `onLoadSave: (file: File) => Promise<void>`     | buttons, `useSavedGame`, `useSaveFilePicker` |
+| `CharacterCreator`  | `onCharacterCreated: (character: Character) => void`                      | option buttons, `useCharacterForm` |
 | `Minimap`           | `gridSize?`, `playerPosition?`, `title?`                                  | `MapCell`                     |
 | `PlayerStats`       | `hp?`, `mana?`, `exp?`, `stats?`, `gold?`                                  | `StatusBar`, `StatGrid`, `CurrencyDisplay` |
 | `SkillBar`          | `skills: { id, name, hotKey, icon, cooldown?, onClick? }[]`                | `SkillButton`                 |
@@ -89,16 +89,17 @@ export const StartButton = () => (
   - `useAutoSave()` saves the game (debounced);
   - `useCharacterForm()` holds the character creator's state and rules;
   - `useChatMessages()` holds the chat history; `useChatInput()` handles typing, Enter to send and Enter-to-focus;
-  - `useSkillHotkeys()` binds skills to their keys (ignored while the player types in a text field).
+  - `useHotkeys()` binds keys to actions while a component is mounted (used by `SkillBar` and `ActionButtonGroup`, ignored while the player types in a text field);
+  - `useSaveFilePicker()` opens the file picker and reports save-file errors.
 - **Screens connect the two.** `screens/MenuScreen.tsx`, `NewCharacterScreen.tsx` and `GameScreen.tsx` call hooks and pass data and callbacks down. `app/*/page.tsx` files only render a screen.
-- **Components call at most one hook and render.** `Chat`, `ChatInput`, `SkillBar` and `CharacterCreator` have no state or effects of their own. Hooks are tested on their own with React Testing Library (`apps/web/src/hooks/*.test.ts(x)`).
+- **Components call at most one hook and render.** `Chat`, `ChatInput`, `SkillBar`, `ActionButtonGroup`, `MainMenu` and `CharacterCreator` have no logic of their own beyond rendering. Data types shared by hooks and components live outside the component tree (e.g. `src/chat/types.ts`), so hooks never import from components. Hooks are tested on their own with React Testing Library (`apps/web/src/hooks/*.test.ts(x)`).
 
 ```tsx
 "use client";
 
 import { useRouter } from "next/navigation";
 import type { Character } from "@grunberg/engine";
-import CharacterCreator from "@/components/CharacterCreator";
+import { CharacterCreator } from "@/components/organisms/CharacterCreator";
 import { useGameActions } from "@/contexts/useGameActions";
 
 // A screen: hooks in, plain props out.
@@ -216,7 +217,7 @@ export const GameLayout = () => {
 ## Next steps
 
 1. Build the missing organisms: CharacterSheet, Inventory, Combat
-2. Split `CharacterCreator` into the hierarchy (its form logic already lives in `useCharacterForm`)
+2. Split `CharacterCreator` into smaller molecules (option group, stat row)
 3. Generate chat messages from engine events instead of placeholder text
 4. Translate the UI labels to English
 5. Add Storybook and component tests (axe, Playwright)

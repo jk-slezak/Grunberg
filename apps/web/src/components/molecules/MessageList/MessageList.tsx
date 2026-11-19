@@ -1,15 +1,9 @@
 import { MessageBubble } from "../../atoms/MessageBubble";
-import type { MessageType } from "../../atoms/MessageBubble";
+import type { ChatMessage } from "../../../chat/types";
 import styles from "./MessageList.module.css";
 
-export interface Message {
-  id: number | string;
-  type: MessageType;
-  text: string;
-}
-
 export interface MessageListProps {
-  messages: Message[];
+  messages: ChatMessage[];
 }
 
 export const MessageList = ({ messages }: MessageListProps) => {

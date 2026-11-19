@@ -40,7 +40,7 @@ Security details (origin and size checks, rate limits, headers, retention) are d
 - **In the browser:** `createGameStore` (`apps/web/src/core/gameStore.ts`) runs the same engine locally. Components never touch the store directly; they use hooks:
   - `useGameState()` returns the current state (via `useSyncExternalStore`, server-render safe);
   - `useGameActions()` returns stable actions (`createCharacter`, `loadState`, `resetState`).
-- **Why a store instead of React Context with `useReducer`:** every `dispatch` applies the action to the latest state and emits its events immediately, so React batching cannot drop events. Actions without effect do not re-render anything.
+- **Why a store instead of React Context with `useReducer`:** every `dispatch` applies the action to the latest state and hands its events to an optional `emit` callback immediately, so React batching cannot drop events. Actions without effect do not re-render anything.
 - **Local saves:** `useAutoSave` writes the state to localStorage (debounced). Saves and imported files are validated with `gameStateSchema` before they reach the game.
 
 > The game screen does not call the API yet. Connecting it (TanStack Query, optimistic updates, rollback on `409`/`422`) is the next roadmap item.
@@ -65,7 +65,7 @@ const { state, events } = applyAction(
 ```
 
 - On the server, events are stored in the append-only `game_events` table, which makes a session replayable and debuggable.
-- In the browser, the store publishes them on `gameEventBus` (`apps/web/src/core/GameEventBus.ts`), so systems like quests or sound can react without knowing about each other.
+- In the browser, `createGameStore` accepts an `emit` callback for events. Nothing listens yet, so the app passes none. When the first listener arrives (quests, sound), it gets a small typed emitter, not a global singleton.
 
 Systems that listen to events stay decoupled: a quest system only cares that `ENEMY_DEFEATED` happened, not how combat works.
 

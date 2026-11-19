@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { Character } from "@grunberg/engine";
-import CharacterCreator from "@/components/CharacterCreator";
+import { CharacterCreator } from "@/components/organisms/CharacterCreator";
 import { useGameActions } from "@/contexts/useGameActions";
 
 export const NewCharacterScreen = () => {
