@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChatInput } from "../components/molecules/ChatInput";
-import { useChatMessages } from "./useChatMessages";
+import { MAX_MESSAGES, useChatMessages } from "./useChatMessages";
 
 afterEach(cleanup);
 
@@ -12,8 +12,8 @@ describe("useChatMessages", () => {
     const before = result.current.messages.length;
 
     act(() => {
-      result.current.sendMessage("look");
-      result.current.sendMessage("go north");
+      result.current.append([{ type: "action", text: "look" }]);
+      result.current.append([{ type: "action", text: "go north" }]);
     });
 
     const added = result.current.messages.slice(before);
@@ -21,6 +21,19 @@ describe("useChatMessages", () => {
     expect(new Set(result.current.messages.map((m) => m.id)).size).toBe(
       result.current.messages.length,
     );
+  });
+
+  it("keeps only the newest messages", () => {
+    const { result } = renderHook(() => useChatMessages());
+    const drafts = Array.from({ length: MAX_MESSAGES + 5 }, (_, i) => ({
+      type: "action" as const,
+      text: `step ${i}`,
+    }));
+
+    act(() => result.current.append(drafts));
+
+    expect(result.current.messages).toHaveLength(MAX_MESSAGES);
+    expect(result.current.messages.at(-1)?.text).toBe(`step ${MAX_MESSAGES + 4}`);
   });
 });
 

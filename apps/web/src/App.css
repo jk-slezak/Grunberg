@@ -67,6 +67,7 @@ body,
   --map-wall: #2a3a5a;
   --map-explored: #3a4a6a;
   --map-unexplored: #1a1a2e;
+  --map-stairs: #8e6cc9;
   --map-player: #ffd700;
   --map-player-glow: rgba(255, 215, 0, 0.6);
 }

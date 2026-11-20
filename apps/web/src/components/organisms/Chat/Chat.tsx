@@ -1,18 +1,19 @@
-import { useChatMessages } from "../../../hooks/useChatMessages";
+import type { ChatMessage } from "../../../chat/types";
 import { ChatInput } from "../../molecules/ChatInput";
 import { MessageList } from "../../molecules/MessageList";
 import styles from "./Chat.module.css";
 
-export const Chat = () => {
-  const { messages, sendMessage } = useChatMessages();
+export interface ChatProps {
+  messages: ChatMessage[];
+  onSendMessage: (text: string) => void;
+}
 
-  return (
-    <div className={styles.chat}>
-      <MessageList messages={messages} />
-      <ChatInput
-        placeholder="Wciśnij Enter by zacząć pisać i wysłać komendę"
-        onSendMessage={sendMessage}
-      />
-    </div>
-  );
-};
+export const Chat = ({ messages, onSendMessage }: ChatProps) => (
+  <div className={styles.chat}>
+    <MessageList messages={messages} />
+    <ChatInput
+      placeholder="Wciśnij Enter, wpisz komendę (np. północ) lub chodź strzałkami"
+      onSendMessage={onSendMessage}
+    />
+  </div>
+);

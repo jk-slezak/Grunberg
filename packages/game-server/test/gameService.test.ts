@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Character, DungeonFloor, MapTile } from "@grunberg/engine";
+import type { Character, Direction, DungeonFloor, MapTile } from "@grunberg/engine";
 import {
   createGame,
+  FIRST_FLOOR,
   GAME_TTL_MS,
   GameNotFound,
   getEvents,
@@ -9,10 +10,9 @@ import {
   InMemoryGameRepository,
   IntentRejected,
   MAX_ACTIONS_PER_GAME,
-  NoEffect,
-  performIntent,
+  performIntents,
+  restoreGame,
   StaleVersion,
-  type Intent,
 } from "../src";
 
 const NOW = 1_700_000_000_000;
@@ -58,66 +58,123 @@ describe("gameService", () => {
     );
   };
 
-  const move = (
-    id: string,
-    expectedVersion: number,
-    direction: "north" | "south" | "east" | "west",
-  ) => performIntent(repo, id, expectedVersion, { type: "move", direction }, NOW);
+  const moves = (id: string, expectedVersion: number, ...directions: Direction[]) =>
+    performIntents(
+      repo,
+      id,
+      expectedVersion,
+      directions.map((direction) => ({ type: "move", direction })),
+      NOW,
+    );
 
-  it("creates a game with the character and its starting status", async () => {
+  const rejection = (promise: Promise<unknown>) =>
+    promise.then(
+      () => null,
+      (e: unknown) => (e instanceof IntentRejected ? e.reason : e),
+    );
+
+  it("creates a game with the character on a seeded first floor", async () => {
     const { id } = await newGame();
-    expect(await getGame(repo, id, NOW)).toMatchObject({
+    const game = await getGame(repo, id, NOW);
+
+    expect(game).toMatchObject({
       version: 0,
-      state: { character: { name: "Aria" }, characterStatus: { hp: 100 } },
+      state: {
+        character: { name: "Aria" },
+        characterStatus: { hp: 100 },
+        position: { floor: FIRST_FLOOR },
+        currentFloor: { floorNumber: FIRST_FLOOR },
+      },
     });
-  });
-
-  it("applies a move, bumps the version and logs the event", async () => {
-    const { id } = await newGame(0);
-
-    const result = await move(id, 1, "east");
-
-    expect(result).toMatchObject({ version: 2, state: { position: { x: 1, y: 1 } } });
+    const { x, y } = game.state.position;
+    expect(game.state.currentFloor!.tiles[y][x].type).toBe("empty");
     expect((await getEvents(repo, id, NOW)).map((e) => e.type)).toEqual([
       "CHARACTER_CREATED",
+      "FLOOR_CHANGED",
       "POSITION_CHANGED",
+      "TILES_REVEALED",
     ]);
   });
 
-  it("rejects a move when no floor is loaded", async () => {
-    const { id } = await newGame();
-    await expect(move(id, 0, "east")).rejects.toBeInstanceOf(IntentRejected);
+  it("gives every new game its own floor", async () => {
+    const a = await newGame();
+    const b = await newGame();
+    expect(a.state.currentFloor!.seed).not.toBe(b.state.currentFloor!.seed);
   });
 
-  it("rejects a move into a wall", async () => {
+  it("applies a move, bumps the version and logs the events", async () => {
+    const { id } = await newGame(0);
+
+    const result = await moves(id, 1, "east");
+
+    expect(result).toMatchObject({ version: 2, state: { position: { x: 1, y: 1 } } });
+    expect(result.rejected).toBeUndefined();
+    expect((await getEvents(repo, id, NOW)).slice(-2).map((e) => e.type)).toEqual([
+      "POSITION_CHANGED",
+      "TILES_REVEALED",
+    ]);
+  });
+
+  it("applies a batch of moves as one new version", async () => {
+    const { id } = await newGame(0);
+    const result = await moves(id, 1, "east", "west", "east");
+    expect(result).toMatchObject({ version: 2, state: { position: { x: 1, y: 1 } } });
+  });
+
+  it("keeps the moves before a refused one and reports which one failed", async () => {
+    const { id } = await newGame(0);
+
+    const result = await moves(id, 1, "east", "east", "west");
+
+    expect(result.rejected).toEqual({ index: 1, reason: "blocked" });
+    expect(result).toMatchObject({ version: 2, state: { position: { x: 1, y: 1 } } });
+  });
+
+  it("rejects a move when no floor is loaded", async () => {
+    const { id, state } = await newGame();
+    await repo.save(id, 0, { ...state, currentFloor: null }, []);
+    expect(await rejection(moves(id, 1, "east"))).toBe("no_floor");
+  });
+
+  it("rejects a move into a wall without saving anything", async () => {
     const { id } = await newGame(1);
-    await expect(move(id, 1, "east")).rejects.toBeInstanceOf(IntentRejected);
-    await expect(move(id, 1, "north")).rejects.toBeInstanceOf(IntentRejected);
+    expect(await rejection(moves(id, 1, "east"))).toBe("blocked");
+    expect(await rejection(moves(id, 1, "north"))).toBe("blocked");
+    expect((await getGame(repo, id, NOW)).version).toBe(1);
   });
 
   it("rejects a move off the map", async () => {
     const { id } = await newGame(0);
-    await expect(move(id, 1, "west")).rejects.toBeInstanceOf(IntentRejected);
+    expect(await rejection(moves(id, 1, "west"))).toBe("blocked");
   });
 
   it("rejects equipping an item the player doesn't own", async () => {
     const { id } = await newGame();
-    const intent: Intent = { type: "equip", itemId: "legendary_sword" };
-    await expect(performIntent(repo, id, 0, intent, NOW)).rejects.toBeInstanceOf(NoEffect);
+    const result = performIntents(repo, id, 0, [{ type: "equip", itemId: "legendary_sword" }], NOW);
+    expect(await rejection(result)).toBe("no_effect");
+  });
+
+  it("restores a game from a state under a new id", async () => {
+    const original = await newGame(0);
+    const restored = await restoreGame(repo, original.state, NOW);
+
+    expect(restored.id).not.toBe(original.id);
+    expect(restored).toMatchObject({ version: 0, state: original.state });
+    expect((await getEvents(repo, restored.id, NOW)).map((e) => e.type)).toEqual(["GAME_LOADED"]);
   });
 
   it("stops accepting actions once a game reaches its length limit", async () => {
     const { id, state, version } = await newGame(0);
     for (let v = version; v < MAX_ACTIONS_PER_GAME; v++) await repo.save(id, v, state, []);
 
-    await expect(move(id, MAX_ACTIONS_PER_GAME, "east")).rejects.toThrow("length limit");
+    expect(await rejection(moves(id, MAX_ACTIONS_PER_GAME, "east"))).toBe("length_limit");
   });
 
   it("rejects a stale version and returns the current game", async () => {
     const { id } = await newGame(0);
-    await move(id, 1, "east");
+    await moves(id, 1, "east");
 
-    const error = await move(id, 1, "west").catch((e: unknown) => e);
+    const error = await moves(id, 1, "west").catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(StaleVersion);
     expect((error as StaleVersion).current.version).toBe(2);
@@ -129,7 +186,7 @@ describe("gameService", () => {
 
     await expect(getGame(repo, id, later)).rejects.toBeInstanceOf(GameNotFound);
     await expect(
-      performIntent(repo, id, 1, { type: "move", direction: "east" }, later),
+      performIntents(repo, id, 1, [{ type: "move", direction: "east" }], later),
     ).rejects.toBeInstanceOf(GameNotFound);
     expect((await getGame(repo, id, NOW)).id).toBe(id);
   });
@@ -143,6 +200,6 @@ describe("gameService", () => {
   it("reports unknown games as not found", async () => {
     await expect(getGame(repo, UNKNOWN_ID, NOW)).rejects.toBeInstanceOf(GameNotFound);
     await expect(getEvents(repo, UNKNOWN_ID, NOW)).rejects.toBeInstanceOf(GameNotFound);
-    await expect(move(UNKNOWN_ID, 0, "east")).rejects.toBeInstanceOf(GameNotFound);
+    await expect(moves(UNKNOWN_ID, 0, "east")).rejects.toBeInstanceOf(GameNotFound);
   });
 });

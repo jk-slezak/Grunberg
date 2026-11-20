@@ -20,7 +20,7 @@ export type GameEventType =
   | "FLAG_SET"
   | "FLAG_UPDATED"
   | "FLOOR_CHANGED"
-  | "TILE_EXPLORED"
+  | "TILES_REVEALED"
   | "GAME_SAVED"
   | "GAME_LOADED"
   | "LEVEL_UP"
@@ -57,7 +57,7 @@ export interface GameEventData {
   FLAG_SET: { flagId: string; value: boolean | number | string };
   FLAG_UPDATED: { flagId: string; oldValue: unknown; newValue: unknown };
   FLOOR_CHANGED: { oldFloor: number; newFloor: number };
-  TILE_EXPLORED: { floor: number; x: number; y: number };
+  TILES_REVEALED: { floor: number; count: number };
   GAME_SAVED: { timestamp: number };
   GAME_LOADED: { timestamp: number };
   LEVEL_UP: { oldLevel: number; newLevel: number };

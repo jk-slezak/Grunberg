@@ -1,6 +1,5 @@
 import { useMemo, useSyncExternalStore } from "react";
-import { parseSaveData } from "../services/saveData";
-import { readRawSave } from "../services/saveStorage";
+import { parseSession, readRawSession } from "../services/session";
 
 const subscribe = (onChange: () => void) => {
   window.addEventListener("storage", onChange);
@@ -8,9 +7,9 @@ const subscribe = (onChange: () => void) => {
 };
 
 export const useSavedGame = () => {
-  const raw = useSyncExternalStore(subscribe, readRawSave, () => null);
+  const raw = useSyncExternalStore(subscribe, readRawSession, () => null);
   return useMemo(() => {
-    const save = parseSaveData(raw);
-    return { hasSave: save !== null, savedAt: save?.timestamp ?? null };
+    const session = parseSession(raw);
+    return { hasSave: session !== null, savedAt: session?.savedAt ?? null };
   }, [raw]);
 };

@@ -5,25 +5,14 @@ import { CurrencyDisplay } from "../../molecules/CurrencyDisplay";
 import styles from "./PlayerStats.module.css";
 
 export interface PlayerStatsProps {
-  hp?: { current: number; max: number };
-  mana?: { current: number; max: number };
-  exp?: { current: number; max: number };
-  stats?: Stat[];
-  gold?: number;
+  hp: { current: number; max: number };
+  mana: { current: number; max: number };
+  exp: { current: number; max: number };
+  stats: Stat[];
+  gold: number;
 }
 
-export const PlayerStats = ({
-  hp = { current: 85, max: 100 },
-  mana = { current: 60, max: 100 },
-  exp = { current: 750, max: 1000 },
-  stats = [
-    { label: "Siła", value: 12 },
-    { label: "Zręczność", value: 15 },
-    { label: "Inteligencja", value: 18 },
-    { label: "Wytrzymałość", value: 14 },
-  ],
-  gold = 250,
-}: PlayerStatsProps) => {
+export const PlayerStats = ({ hp, mana, exp, stats, gold }: PlayerStatsProps) => {
   return (
     <div className={styles["player-stats"]}>
       <div className={styles["player-stats__section"]}>

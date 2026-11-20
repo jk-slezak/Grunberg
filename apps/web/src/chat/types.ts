@@ -6,3 +6,6 @@ export interface ChatMessage {
   type: MessageType;
   text: string;
 }
+
+/** A message before the chat gives it an id. */
+export type MessageDraft = Omit<ChatMessage, "id">;

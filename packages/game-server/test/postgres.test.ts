@@ -9,7 +9,7 @@ import {
   createGame,
   enforceRateLimit,
   getEvents,
-  performIntent,
+  performIntents,
   RateLimited,
   StaleVersion,
   VersionConflict,
@@ -91,10 +91,13 @@ describe.skipIf(!url)("Postgres", () => {
       );
       expect((await getEvents(games, game.id, Date.now())).map((e) => e.type)).toEqual([
         "CHARACTER_CREATED",
+        "FLOOR_CHANGED",
+        "POSITION_CHANGED",
+        "TILES_REVEALED",
       ]);
 
       await expect(
-        performIntent(games, game.id, 5, { type: "move", direction: "east" }, Date.now()),
+        performIntents(games, game.id, 5, [{ type: "move", direction: "east" }], Date.now()),
       ).rejects.toBeInstanceOf(StaleVersion);
     });
 
@@ -138,11 +141,18 @@ describe.skipIf(!url)("Postgres", () => {
       await enforceRateLimit(rateLimits, rule, "client-a", NOW + 60_000);
     });
 
+    it("counts a request by its cost", async () => {
+      await enforceRateLimit(rateLimits, rule, "client-weighted", NOW, 3);
+      await expect(
+        enforceRateLimit(rateLimits, rule, "client-weighted", NOW, 1),
+      ).rejects.toBeInstanceOf(RateLimited);
+    });
+
     it("counts concurrent hits atomically", async () => {
       const key = `${testRun}-concurrent`;
       const windowStart = new Date(NOW);
       const counts = await Promise.all(
-        Array.from({ length: 20 }, () => rateLimits.hit(key, windowStart)),
+        Array.from({ length: 20 }, () => rateLimits.hit(key, windowStart, 1)),
       );
       expect([...counts].sort((a, b) => a - b)).toEqual(
         Array.from({ length: 20 }, (_, i) => i + 1),

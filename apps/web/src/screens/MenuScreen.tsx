@@ -1,31 +1,33 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { api } from "@/api/client";
 import { MainMenu } from "@/components/organisms/MainMenu";
-import { useGameActions } from "@/contexts/useGameActions";
+import { GAME_QUERY_KEY } from "@/game/useGameSession";
+import { useStartGame } from "@/game/useStartGame";
 import { importSaveFile } from "@/services/saveFile";
-import { loadSavedGame } from "@/services/saveStorage";
 
 export const MenuScreen = () => {
   const router = useRouter();
-  const { loadState, resetState } = useGameActions();
-
-  const startNewGame = () => {
-    resetState();
-    router.push("/new");
-  };
+  const queryClient = useQueryClient();
+  const { startAsync: restore } = useStartGame(api.restoreGame);
 
   const continueGame = () => {
-    const saved = loadSavedGame();
-    if (!saved) return;
-    loadState(saved);
+    // Load the saved game fresh: what's cached may be from before the server copy expired.
+    queryClient.removeQueries({ queryKey: GAME_QUERY_KEY });
     router.push("/game");
   };
 
   const loadSaveFile = async (file: File) => {
-    loadState(await importSaveFile(file));
-    router.push("/game");
+    await restore(await importSaveFile(file));
   };
 
-  return <MainMenu onNewGame={startNewGame} onContinue={continueGame} onLoadSave={loadSaveFile} />;
+  return (
+    <MainMenu
+      onNewGame={() => router.push("/new")}
+      onContinue={continueGame}
+      onLoadSave={loadSaveFile}
+    />
+  );
 };

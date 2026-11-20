@@ -1,9 +1,14 @@
+/*
+ * The layout always fits the screen: flexible rows may shrink below their content
+ * (minmax(0, 1fr)) and their panels scroll inside, so the bottom bars stay visible.
+ * 100% instead of 100vh: html, body and #root fill the visible area, even under mobile toolbars.
+ */
 .game-layout {
   width: 100%;
-  height: 100vh;
+  height: 100%;
   display: grid;
   grid-template-columns: 1fr 350px;
-  grid-template-rows: 60px 1fr 1fr 60px 60px;
+  grid-template-rows: 60px minmax(0, 1fr) minmax(0, 1fr) auto auto;
   grid-template-areas:
     "header header"
     "chat minimap"
@@ -22,8 +27,16 @@
   border: 1px solid var(--border-primary);
 }
 
+.game-layout > * {
+  min-height: 0;
+}
+
 .game-layout__minimap {
   grid-area: minimap;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
   background: var(--background-paper);
   border-radius: 8px;
   border: 1px solid var(--border-secondary);
@@ -34,12 +47,13 @@
   background: var(--background-paper);
   border-radius: 8px;
   border: 1px solid var(--border-secondary);
-  overflow: scroll;
+  overflow: hidden;
 }
 
 .game-layout__hud {
   grid-area: hud;
   border-radius: 8px;
+  overflow: hidden;
 }
 
 .game-layout__skills {
@@ -59,7 +73,7 @@
 @media (max-width: 1024px) {
   .game-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: 60px 200px 1fr 80px 60px 60px;
+    grid-template-rows: 60px 160px minmax(0, 140px) minmax(0, 1fr) auto auto;
     grid-template-areas:
       "header"
       "minimap"
@@ -67,10 +81,5 @@
       "chat"
       "skills"
       "navigation";
-  }
-
-  .game-layout__minimap {
-    top: 70px;
-    right: 16px;
   }
 }

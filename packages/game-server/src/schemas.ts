@@ -2,16 +2,17 @@ import { z } from "zod";
 import {
   CLASSES,
   INITIAL_STAT_POINTS,
+  intentSchema,
   isValidCharacterName,
+  MAX_INTENTS_PER_REQUEST,
   MAX_STAT_VALUE,
   MIN_STAT_VALUE,
   normalizeCharacterName,
   RACES,
   sumStats,
 } from "@grunberg/engine";
+import { MAX_SNAPSHOT_LENGTH } from "./snapshot";
 
-const EQUIPMENT_SLOTS = ["weapon", "head", "chest", "legs", "feet", "accessory"] as const;
-const MAX_ID_LENGTH = 64;
 const MAX_VERSION = 1_000_000;
 
 const stat = z.number().int().min(MIN_STAT_VALUE).max(MAX_STAT_VALUE);
@@ -33,19 +34,15 @@ export const characterSchema = z.object({
     ),
 });
 
-export const intentSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("move"), direction: z.enum(["north", "south", "east", "west"]) }),
-  z.object({ type: z.literal("equip"), itemId: z.string().min(1).max(MAX_ID_LENGTH) }),
-  z.object({ type: z.literal("unequip"), slot: z.enum(EQUIPMENT_SLOTS) }),
-]);
-
-export type Intent = z.infer<typeof intentSchema>;
-
 export const createGameBody = z.object({ character: characterSchema });
 
 export const actionBody = z.object({
   expectedVersion: z.number().int().nonnegative().max(MAX_VERSION),
-  intent: intentSchema,
+  intents: z.array(intentSchema).min(1).max(MAX_INTENTS_PER_REQUEST),
+});
+
+export const restoreGameBody = z.object({
+  snapshot: z.string().min(1).max(MAX_SNAPSHOT_LENGTH),
 });
 
 export const gameParams = z.object({ id: z.uuid() });

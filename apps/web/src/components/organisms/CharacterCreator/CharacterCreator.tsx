@@ -5,6 +5,9 @@ import styles from "./CharacterCreator.module.css";
 
 interface CharacterCreatorProps {
   onCharacterCreated: (character: Character) => void;
+  /** True while the game is being created: blocks a second submit. */
+  submitting?: boolean;
+  error?: string | null;
 }
 
 const STAT_NAMES: StatName[] = ["strength", "agility", "intelligence"];
@@ -12,13 +15,17 @@ const STAT_NAMES: StatName[] = ["strength", "agility", "intelligence"];
 const optionClass = (selected: boolean) =>
   selected ? `${styles.option} ${styles.selected}` : styles.option;
 
-export const CharacterCreator = ({ onCharacterCreated }: CharacterCreatorProps) => {
+export const CharacterCreator = ({
+  onCharacterCreated,
+  submitting = false,
+  error = null,
+}: CharacterCreatorProps) => {
   const form = useCharacterForm();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const character = form.toCharacter();
-    if (character) onCharacterCreated(character);
+    if (character && !submitting) onCharacterCreated(character);
   };
 
   return (
@@ -120,9 +127,18 @@ export const CharacterCreator = ({ onCharacterCreated }: CharacterCreatorProps) 
           </div>
         </div>
 
-        <button type="submit" disabled={!form.isValid} className={styles["submit-button"]}>
-          Create Character
+        <button
+          type="submit"
+          disabled={!form.isValid || submitting}
+          className={styles["submit-button"]}
+        >
+          {submitting ? "Creating…" : "Create Character"}
         </button>
+        {error && (
+          <p role="alert" className={styles.error}>
+            {error}
+          </p>
+        )}
       </form>
     </div>
   );

@@ -115,3 +115,9 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.error {
+  margin-top: 12px;
+  color: #e74c3c;
+  text-align: center;
+}
