@@ -11,10 +11,6 @@ const startErrorMessage = (error: unknown): string => {
   return "Something went wrong. Try again.";
 };
 
-/**
- * Starts playing a game the server just created or restored: saves it locally, puts it in
- * the cache (so /game needn't load it again) and opens the game screen.
- */
 export const useStartGame = <T>(start: (input: T) => Promise<GameView>) => {
   const queryClient = useQueryClient();
   const router = useRouter();

@@ -9,7 +9,6 @@ const INITIAL_MESSAGES: ChatMessage[] = [
   },
 ];
 
-/** Most messages kept on screen; older ones scroll away for good. */
 export const MAX_MESSAGES = 200;
 
 export const useChatMessages = () => {

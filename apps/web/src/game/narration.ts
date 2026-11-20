@@ -8,7 +8,6 @@ const DIRECTION_NAMES: Record<Direction, string> = {
   west: "zachód",
 };
 
-/** Rejection codes from the engine and the server, in the player's words. */
 const REJECTIONS = new Map<string, string>([
   ["blocked", "Ściana. Tędy nie przejdziesz."],
   ["no_floor", "Nie ma jeszcze dokąd iść."],
@@ -20,7 +19,6 @@ const REJECTIONS = new Map<string, string>([
 const narration = (text: string): MessageDraft => ({ type: "narration", text });
 export const systemMessage = (text: string): MessageDraft => ({ type: "system", text });
 
-/** What the player's character does, written before the result is known. */
 export const describeIntent = (intent: Intent): MessageDraft => {
   switch (intent.type) {
     case "move":
@@ -35,10 +33,6 @@ export const describeIntent = (intent: Intent): MessageDraft => {
 export const describeRejection = (reason: string | undefined): MessageDraft =>
   systemMessage(REJECTIONS.get(reason ?? "") ?? "Nie da się tego zrobić.");
 
-/**
- * Engine events as story lines. Events that the minimap or HUD already show (a step, revealed
- * tiles) stay silent, so the chat doesn't fill with noise.
- */
 export const narrateEvent = (event: GameEvent): MessageDraft | null => {
   switch (event.type) {
     case "FLOOR_CHANGED":

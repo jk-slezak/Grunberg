@@ -12,8 +12,8 @@ const KEYS: [string, Direction][] = [
   ["a", "west"],
 ];
 
-/** Arrow keys and WASD walk the player (ignored while typing in the chat). */
-export const useMovementKeys = (onMove: (intent: Intent) => void) =>
+export const useMovementKeys = (onMove: (intent: Intent) => void): void => {
   useHotkeys(
     KEYS.map(([key, direction]) => ({ key, onPress: () => onMove({ type: "move", direction }) })),
   );
+};

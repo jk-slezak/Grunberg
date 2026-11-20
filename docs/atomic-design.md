@@ -80,7 +80,7 @@ export const StartButton = () => (
 
 | Component    | Responsibility                                                                                      |
 | ------------ | --------------------------------------------------------------------------------------------------- |
-| `GameLayout` | Places the header, chat, minimap, player stats, skill bar and action buttons in the game screen grid, and maps the game state to their props. |
+| `GameLayout` | Places the header, chat, minimap, player stats, skill bar and action buttons in the game screen grid. It gets their props from pure mappers in `src/game/hud.ts`, so it holds no logic itself. |
 
 ## Where logic lives
 

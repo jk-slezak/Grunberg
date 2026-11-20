@@ -3,7 +3,6 @@ import type { DungeonFloor, GameState, Position } from "../types/gameState";
 export const DIRECTIONS = ["north", "south", "east", "west"] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
-/** How far the player sees: tiles within this many steps (including diagonals) get revealed. */
 export const VIEW_RADIUS = 2;
 
 const STEP: Record<Direction, { dx: number; dy: number }> = {
@@ -15,7 +14,6 @@ const STEP: Record<Direction, { dx: number; dy: number }> = {
 
 export type MoveRejection = "no_floor" | "blocked";
 
-/** Where one step in `direction` leads, or why the player can't take it. */
 export const moveTarget = (
   state: GameState,
   direction: Direction,
@@ -28,10 +26,6 @@ export const moveTarget = (
   return { ok: true, target };
 };
 
-/**
- * Marks the tiles around `position` as visible and explored, and every other tile as not visible.
- * Unchanged tiles keep their identity, so React and JSON diffs stay cheap.
- */
 export const revealAround = (
   floor: DungeonFloor,
   position: Position,

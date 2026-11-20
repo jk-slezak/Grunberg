@@ -7,9 +7,9 @@ describe("parseCommand", () => {
     ["  Idź na Zachód ", "west"],
     ["go east", "east"],
     ["s", "south"],
-    ["idz na poludnie", "south"], // typed without Polish diacritics
+    ["idz na poludnie", "south"],
     ["Południe", "south"],
-    ["wschód", "east"], // decomposed ó (NFD) still counts
+    ["wschód", "east"],
   ])("%s → %s", (text, direction) => {
     expect(parseCommand(text)).toEqual(direction ? { type: "move", direction } : null);
   });

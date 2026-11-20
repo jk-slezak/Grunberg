@@ -22,7 +22,6 @@ export interface GameRepository {
   deleteInactive(before: Date): Promise<number>;
 }
 
-/** Used in tests and in development without DATABASE_URL. The clock is injectable for tests. */
 export class InMemoryGameRepository implements GameRepository {
   constructor(private readonly now: () => number = Date.now) {}
 

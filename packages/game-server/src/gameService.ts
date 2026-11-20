@@ -14,12 +14,10 @@ import { GameNotFound, IntentRejected, StaleVersion } from "./errors";
 import { VersionConflict, type GameRepository, type StoredGame } from "./repository";
 import { activeSince } from "./retention";
 
-/** Caps one game's requests (and so its event log). `version` counts accepted requests. */
-export const MAX_ACTIONS_PER_GAME = 5000;
+export const MAX_REQUESTS_PER_GAME = 5000;
 
 export const FIRST_FLOOR = 1;
 
-/** Runs engine actions one after another and collects all their events. */
 const applyAll = (state: GameState, actions: GameStateAction[], now: number) =>
   actions.reduce(
     (acc, action) => {
@@ -29,7 +27,6 @@ const applyAll = (state: GameState, actions: GameStateAction[], now: number) =>
     { state, events: [] as GameEvent[] },
   );
 
-/** Starts a game on a fresh, randomly seeded first floor. The seed is injectable for tests. */
 export const createGame = async (
   repo: GameRepository,
   character: Character,
@@ -47,10 +44,6 @@ export const createGame = async (
   return repo.create(state, events);
 };
 
-/**
- * Starts a new game from a state the caller has already verified (a signed snapshot).
- * It gets a new id: the old one may have expired or may still be played elsewhere.
- */
 export const restoreGame = async (
   repo: GameRepository,
   state: GameState,
@@ -85,11 +78,6 @@ export const getEvents = async (
 
 export type IntentsOutcome = StoredGame & Pick<IntentsResult, "events" | "rejected">;
 
-/**
- * Applies a batch of intents in order and saves the result as one new version.
- * If a later intent is refused, the ones before it still count and `rejected` says which one
- * failed. If the very first one is refused, nothing changes and IntentRejected is thrown.
- */
 export const performIntents = async (
   repo: GameRepository,
   id: string,
@@ -99,7 +87,7 @@ export const performIntents = async (
 ): Promise<IntentsOutcome> => {
   const game = await getGame(repo, id, now);
   if (game.version !== expectedVersion) throw new StaleVersion(game);
-  if (game.version >= MAX_ACTIONS_PER_GAME) throw new IntentRejected("length_limit");
+  if (game.version >= MAX_REQUESTS_PER_GAME) throw new IntentRejected("length_limit");
 
   const { state, events, rejected } = applyIntents(game.state, intents, { now });
   if (rejected?.index === 0) throw new IntentRejected(rejected.reason);

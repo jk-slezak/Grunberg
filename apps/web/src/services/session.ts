@@ -1,14 +1,8 @@
 import { z } from "zod";
 import type { GameView } from "../api/client";
 
-/**
- * The player's local copy of their game: which server game they are playing and its latest
- * signed snapshot. The snapshot lets the server restore the game after its copy expires.
- * Version 1 saves held a raw, unsigned state; they can't be trusted and are ignored.
- */
 export const SAVE_VERSION = "2.0.0";
 const SESSION_KEY = "grunberg_save";
-/** Generous upper bound for a save; the server checks the snapshot itself. */
 export const MAX_SAVE_BYTES = 1024 * 1024;
 
 const sessionSchema = z.object({
@@ -37,21 +31,24 @@ export const parseSession = (serialized: string | null): Session | null => {
   }
 };
 
-export const readRawSession = (): string | null => {
+const withStorage = <T>(operation: (storage: Storage) => T, whenUnavailable: T): T => {
   try {
-    return localStorage.getItem(SESSION_KEY);
+    return operation(localStorage);
   } catch {
-    return null; // storage disabled (private mode, blocked site data)
+    return whenUnavailable;
   }
 };
+
+export const readRawSession = (): string | null =>
+  withStorage((storage) => storage.getItem(SESSION_KEY), null);
 
 export const loadSession = (): Session | null => parseSession(readRawSession());
 
-export const saveSession = (game: GameView, now: number): void => {
-  try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(createSession(game, now)));
-  } catch (error) {
-    // Full or disabled storage: the game goes on, it just can't be continued later.
-    console.error("Failed to save game:", error);
-  }
-};
+export const clearSession = (): void =>
+  withStorage((storage) => storage.removeItem(SESSION_KEY), undefined);
+
+export const saveSession = (game: GameView, now: number): void =>
+  withStorage(
+    (storage) => storage.setItem(SESSION_KEY, JSON.stringify(createSession(game, now))),
+    undefined,
+  );

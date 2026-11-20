@@ -1,8 +1,3 @@
-/*
- * The layout always fits the screen: flexible rows may shrink below their content
- * (minmax(0, 1fr)) and their panels scroll inside, so the bottom bars stay visible.
- * 100% instead of 100vh: html, body and #root fill the visible area, even under mobile toolbars.
- */
 .game-layout {
   width: 100%;
   height: 100%;

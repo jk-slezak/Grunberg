@@ -68,14 +68,13 @@ const gameRepository = (db: Db): GameRepository => ({
 });
 
 const rateLimitStore = (db: Db): RateLimitStore => ({
-  async hit(key, windowStart, cost) {
-    // One atomic upsert, so concurrent requests cannot both slip under the limit.
+  async hit(key, windowStart) {
     const [row] = await db
       .insert(rateLimits)
-      .values({ key, windowStart, count: cost })
+      .values({ key, windowStart, count: 1 })
       .onConflictDoUpdate({
         target: [rateLimits.key, rateLimits.windowStart],
-        set: { count: sql`${rateLimits.count} + ${cost}` },
+        set: { count: sql`${rateLimits.count} + 1` },
       })
       .returning({ count: rateLimits.count });
     return row.count;
@@ -86,8 +85,9 @@ const rateLimitStore = (db: Db): RateLimitStore => ({
   },
 });
 
+const PGBOUNCER_COMPATIBLE = { prepare: false };
+
 export const connectPostgres = (url: string) => {
-  // prepare: false keeps it compatible with pooled (PgBouncer) URLs, e.g. Neon on Vercel.
-  const db = drizzle(postgres(url, { prepare: false }));
+  const db = drizzle(postgres(url, PGBOUNCER_COMPATIBLE));
   return { games: gameRepository(db), rateLimits: rateLimitStore(db) };
 };

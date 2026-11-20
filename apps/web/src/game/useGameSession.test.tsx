@@ -19,7 +19,6 @@ const NOW = 1_700_000_000_000;
 const GAME_ID = "11111111-1111-4111-8111-111111111111";
 const RESTORED_ID = "22222222-2222-4222-8222-222222222222";
 
-/** A 5×3 floor: only the middle row is open and the player stands at its west end. */
 const corridor = (): GameState => {
   const hero = applyAction(
     createInitialGameState(NOW),
@@ -57,7 +56,6 @@ const respond = (status: number, body: unknown, headers: Record<string, string> 
     headers: { "content-type": "application/json", ...headers },
   });
 
-/** Plays the server's part with the real engine, so predictions are checked against it. */
 const createServer = () => {
   let game: GameView = { id: GAME_ID, version: 0, state: corridor(), snapshot: "snapshot-0" };
   const requests: { path: string; body?: { expectedVersion: number; intents: Intent[] } }[] = [];
@@ -86,7 +84,6 @@ const createServer = () => {
     get game() {
       return game;
     },
-    /** Another tab moves the player on the server. */
     moveElsewhere: () => {
       const result = applyIntents(game.state, [{ type: "move", direction: "east" }], { now: NOW });
       game = { ...game, version: game.version + 1, state: result.state };
@@ -112,10 +109,8 @@ const renderSession = async () => {
   return { ...hook, onMessages, texts: () => onMessages.mock.calls.flat(2).map((m) => m.text) };
 };
 
-/** Runs timers (the send interval, TanStack's scheduling) and lets promises resolve. */
 const settle = (ms = SEND_INTERVAL_MS) => act(() => vi.advanceTimersByTimeAsync(ms));
 
-/** Each step comes a little later than the previous one, as a real player's would. */
 const step = (push: (intent: Intent) => void, intent: Intent) => {
   vi.setSystemTime(Date.now() + STEP_INTERVAL_MS);
   act(() => push(intent));
@@ -169,7 +164,7 @@ describe("useGameSession", () => {
     const { result } = await renderSession();
 
     step(result.current.push, east);
-    await settle(0); // first request goes out
+    await settle(0);
     step(result.current.push, east);
     step(result.current.push, east);
     expect(result.current.state?.position).toMatchObject({ x: 3 });
@@ -199,7 +194,7 @@ describe("useGameSession", () => {
     await settle(SEND_INTERVAL_MS * 3);
 
     expect(server.requests.filter((r) => r.path.endsWith("/actions"))).toHaveLength(0);
-    expect(fetchMock).toHaveBeenCalledTimes(2); // the load and the held request, nothing more
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.current.state?.position).toMatchObject({ x: 2 });
 
     release();
@@ -245,9 +240,9 @@ describe("useGameSession", () => {
 
   it("takes the server's state when another tab changed the game (409)", async () => {
     const { result, texts } = await renderSession();
-    server.moveElsewhere(); // the player is now at x = 1, version 1
+    server.moveElsewhere();
 
-    step(result.current.push, east); // predicted from x = 0
+    step(result.current.push, east);
     await settle();
 
     expect(result.current.state?.position).toMatchObject({ x: 1 });
@@ -267,6 +262,17 @@ describe("useGameSession", () => {
     expect(result.current.status).toBe("ready");
     expect(server.requests.at(-1)?.path).toBe("/api/games/restore");
     expect(loadSession()?.gameId).toBe(RESTORED_ID);
+  });
+
+  it("forgets a save the server refuses to restore and reports it missing", async () => {
+    fetchMock
+      .mockImplementationOnce(async () => respond(404, { error: "Game not found" }))
+      .mockImplementationOnce(async () => respond(400, { error: "Invalid or tampered save" }));
+
+    const { result } = await renderSession();
+
+    expect(result.current.status).toBe("missing");
+    expect(loadSession()).toBeNull();
   });
 
   it("reports a missing save so the screen can go back to the menu", async () => {

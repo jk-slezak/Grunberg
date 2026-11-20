@@ -75,7 +75,7 @@ Every game response carries `snapshot`: the state signed by the server (see the 
 - **No personal data on the server.** No accounts, no IPs (not even hashed), no cookies. The only free text is the character name.
 - **Rate limits without tracking anyone:**
   - per-IP limits are enforced by Vercel Firewall at the edge, so IPs never reach our database;
-  - the app adds global write limits in Postgres (game creation and restores 300/hour, intents 600/min) that protect the free-tier database quota. Every intent of a batch counts, so batching is no way around the limit. Only valid requests count, so malformed traffic cannot use up the quota. Over the limit the API answers `429` with `Retry-After`.
+  - the app adds global write limits in Postgres (game creation and restores 300/hour, action requests 600/min) that protect the free-tier database quota. A request is one transaction of at most 10 intents, so it counts once: one client at the per-IP limit uses a tenth of the quota. Under a flood a request may write up to about 20 small event rows, bounded by the per-game cap below and the 24 h retention. Only valid requests count, so malformed traffic cannot use up the quota. Over the limit the API answers `429` with `Retry-After`.
   - one game accepts at most 5000 requests of up to 10 intents each, which also bounds the size of its event log.
   - the client sends at most one request per 1.2 s (moves made meanwhile go in one batch) and checks moves locally with the same engine, so walking into a wall costs no request.
 - **Server copies of games expire 24 h after the last change.** Expiry is checked on every read, and a daily cron (`/api/cron/cleanup`, protected by `CRON_SECRET`) deletes the rows. The local save is the player's own long-term copy.
