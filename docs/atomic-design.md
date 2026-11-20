@@ -14,8 +14,10 @@ apps/web/src/
 │   ├── organisms/    # Complete interface sections
 │   ├── templates/    # Page layouts that place organisms
 ├── screens/          # Connect hooks (state, actions) to components
-├── hooks/            # Reusable UI logic (autosave, saved game)
-├── contexts/         # Game store provider and its hooks
+├── hooks/            # Reusable UI logic (chat, hotkeys, saved game)
+├── game/             # Game session: API sync, chat commands, narration
+├── api/              # Typed fetch client for /api/games
+├── services/         # Local save (session) and save files
 └── app/              # Next.js routes: thin page.tsx files and API Route Handlers
 ```
 
@@ -66,27 +68,28 @@ export const StartButton = () => (
 | Component           | Props                                                                     | Made of                       |
 | ------------------- | ------------------------------------------------------------------------- | ----------------------------- |
 | `ActionButtonGroup` | `buttons: { id, label, icon, hotKey, onClick?, isActive? }[]`              | `ActionButton`                |
-| `Chat`              | –                                                                         | `MessageList`, `ChatInput`    |
 | `GameHeader`        | `level?`, `location?`, `title?`                                           | –                             |
 | `MainMenu`          | `onNewGame`, `onContinue`, `onLoadSave: (file: File) => Promise<void>`     | buttons, `useSavedGame`, `useSaveFilePicker` |
-| `CharacterCreator`  | `onCharacterCreated: (character: Character) => void`                      | option buttons, `useCharacterForm` |
-| `Minimap`           | `gridSize?`, `playerPosition?`, `title?`                                  | `MapCell`                     |
-| `PlayerStats`       | `hp?`, `mana?`, `exp?`, `stats?`, `gold?`                                  | `StatusBar`, `StatGrid`, `CurrencyDisplay` |
+| `CharacterCreator`  | `onCharacterCreated: (character: Character) => void`, `submitting?`, `error?` | option buttons, `useCharacterForm` |
+| `Chat`              | `messages`, `onSendMessage`                                                | `MessageList`, `ChatInput`    |
+| `Minimap`           | `floor`, `position`, `viewSize?`                                           | `MapCell`                     |
+| `PlayerStats`       | `hp`, `mana`, `exp`, `stats`, `gold`                                       | `StatusBar`, `StatGrid`, `CurrencyDisplay` |
 | `SkillBar`          | `skills: { id, name, hotKey, icon, cooldown?, onClick? }[]`                | `SkillButton`                 |
 
 ### Templates
 
 | Component    | Responsibility                                                                                      |
 | ------------ | --------------------------------------------------------------------------------------------------- |
-| `GameLayout` | Places the header, chat, minimap, player stats, skill bar and action buttons in the game screen grid. |
+| `GameLayout` | Places the header, chat, minimap, player stats, skill bar and action buttons in the game screen grid, and maps the game state to their props. |
 
 ## Where logic lives
 
 - **Components render; hooks hold logic.** State, side effects and data access live in hooks:
-  - `useGameState()` returns the game state;
-  - `useGameActions()` returns stable actions;
+  - `useGameSession()` loads the game, shows predicted moves at once and syncs them with the API (see `docs/architecture.md`, "State ownership");
+  - `useStartGame()` creates or restores a game and opens the game screen;
+  - `useMovementKeys()` walks with the arrow keys and WASD;
+  - `useScrollToEnd()` keeps the chat scrolled to the newest message;
   - `useSavedGame()` reads the local save;
-  - `useAutoSave()` saves the game (debounced);
   - `useCharacterForm()` holds the character creator's state and rules;
   - `useChatMessages()` holds the chat history; `useChatInput()` handles typing, Enter to send and Enter-to-focus;
   - `useHotkeys()` binds keys to actions while a component is mounted (used by `SkillBar` and `ActionButtonGroup`, ignored while the player types in a text field);
@@ -97,22 +100,14 @@ export const StartButton = () => (
 ```tsx
 "use client";
 
-import { useRouter } from "next/navigation";
-import type { Character } from "@grunberg/engine";
+import { api } from "@/api/client";
 import { CharacterCreator } from "@/components/organisms/CharacterCreator";
-import { useGameActions } from "@/contexts/useGameActions";
+import { useStartGame } from "@/game/useStartGame";
 
 // A screen: hooks in, plain props out.
 export const NewCharacterScreen = () => {
-  const router = useRouter();
-  const { createCharacter } = useGameActions();
-
-  const handleCharacterCreated = (character: Character) => {
-    createCharacter(character);
-    router.push("/game");
-  };
-
-  return <CharacterCreator onCharacterCreated={handleCharacterCreated} />;
+  const { start, pending, error } = useStartGame(api.createGame);
+  return <CharacterCreator onCharacterCreated={start} submitting={pending} error={error} />;
 };
 ```
 

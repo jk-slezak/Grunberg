@@ -1,21 +1,38 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GameLayout } from "@/components/templates/GameLayout";
-import { useGameState } from "@/contexts/useGameState";
-import { useAutoSave } from "@/hooks/useAutoSave";
+import { COMMAND_HELP, parseCommand } from "@/game/commands";
+import { systemMessage } from "@/game/narration";
+import { useGameSession } from "@/game/useGameSession";
+import { useChatMessages } from "@/hooks/useChatMessages";
+import { useMovementKeys } from "@/hooks/useMovementKeys";
 
 export const GameScreen = () => {
   const router = useRouter();
-  const state = useGameState();
-  const hasCharacter = state.character !== null;
-
-  useAutoSave(state, hasCharacter);
+  const { messages, append } = useChatMessages();
+  const { status, state, push } = useGameSession(append);
+  useMovementKeys(push);
 
   useEffect(() => {
-    if (!hasCharacter) router.replace("/");
-  }, [hasCharacter, router]);
+    if (status === "missing") router.replace("/");
+  }, [status, router]);
 
-  return hasCharacter ? <GameLayout /> : null;
+  const onCommand = (text: string) => {
+    const intent = parseCommand(text);
+    if (intent) push(intent);
+    else append([{ type: "action", text }, systemMessage(COMMAND_HELP)]);
+  };
+
+  if (status === "error") {
+    return (
+      <p role="alert">
+        Nie udało się wczytać gry. <Link href="/">Wróć do menu</Link>
+      </p>
+    );
+  }
+  if (!state) return null;
+  return <GameLayout state={state} messages={messages} onCommand={onCommand} />;
 };

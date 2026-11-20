@@ -68,14 +68,14 @@ const gameRepository = (db: Db): GameRepository => ({
 });
 
 const rateLimitStore = (db: Db): RateLimitStore => ({
-  async hit(key, windowStart) {
+  async hit(key, windowStart, cost) {
     // One atomic upsert, so concurrent requests cannot both slip under the limit.
     const [row] = await db
       .insert(rateLimits)
-      .values({ key, windowStart, count: 1 })
+      .values({ key, windowStart, count: cost })
       .onConflictDoUpdate({
         target: [rateLimits.key, rateLimits.windowStart],
-        set: { count: sql`${rateLimits.count} + 1` },
+        set: { count: sql`${rateLimits.count} + ${cost}` },
       })
       .returning({ count: rateLimits.count });
     return row.count;

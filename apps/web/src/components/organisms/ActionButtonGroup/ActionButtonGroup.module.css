@@ -1,8 +1,8 @@
 .action-button-group {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  gap: 12px;
-  padding: 16px;
+  gap: 8px;
+  padding: 8px;
 }
 
 @media (min-width: 768px) {

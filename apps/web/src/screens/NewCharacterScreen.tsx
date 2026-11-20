@@ -1,18 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import type { Character } from "@grunberg/engine";
+import { api } from "@/api/client";
 import { CharacterCreator } from "@/components/organisms/CharacterCreator";
-import { useGameActions } from "@/contexts/useGameActions";
+import { useStartGame } from "@/game/useStartGame";
 
 export const NewCharacterScreen = () => {
-  const router = useRouter();
-  const { createCharacter } = useGameActions();
-
-  const handleCharacterCreated = (character: Character) => {
-    createCharacter(character);
-    router.push("/game");
-  };
-
-  return <CharacterCreator onCharacterCreated={handleCharacterCreated} />;
+  const { start, pending, error } = useStartGame(api.createGame);
+  return <CharacterCreator onCharacterCreated={start} submitting={pending} error={error} />;
 };

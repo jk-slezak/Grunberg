@@ -47,10 +47,11 @@ const readLimitedText = async (request: Request, maxBytes: number): Promise<stri
 export const readJson = async <T extends z.ZodType>(
   request: Request,
   schema: T,
+  maxBytes = MAX_BODY_BYTES,
 ): Promise<z.output<T>> => {
   assertSameOrigin(request);
   assertJsonContentType(request);
-  const text = await readLimitedText(request, MAX_BODY_BYTES);
+  const text = await readLimitedText(request, maxBytes);
   let json: unknown;
   try {
     json = JSON.parse(text);

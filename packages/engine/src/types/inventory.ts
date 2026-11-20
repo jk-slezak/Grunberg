@@ -1,6 +1,7 @@
 export type ItemRarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 
-export type EquipmentSlot = "weapon" | "head" | "chest" | "legs" | "feet" | "accessory";
+export const EQUIPMENT_SLOTS = ["weapon", "head", "chest", "legs", "feet", "accessory"] as const;
+export type EquipmentSlot = (typeof EQUIPMENT_SLOTS)[number];
 export type ArmorSlot = Exclude<EquipmentSlot, "weapon">;
 
 interface ItemBase {
