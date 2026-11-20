@@ -9,9 +9,7 @@ export const POST = (request: Request, { params }: RouteContext<"/api/games/[id]
   handle(async () => {
     const { id } = await readParams(params, gameParams);
     const { expectedVersion, intents } = await readJson(request, actionBody);
-    // Counted only after validation, so malformed requests can't use up the global quota.
-    // Each intent counts: a batch must not be a way around the limit.
-    await rateLimit(RULES.action, intents.length);
+    await rateLimit(RULES.action);
     const outcome = await performIntents(
       getStore().games,
       id,

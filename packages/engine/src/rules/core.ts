@@ -4,12 +4,10 @@ import type { GameState, Inventory, QuestProgress } from "../types";
 
 export interface ActionResult {
   state: GameState;
-  /** What happened. Empty when the action was rejected or changed nothing. */
   events: GameEvent[];
 }
 
 export interface EngineContext {
-  /** Injected clock: keeps the engine deterministic on the server and in tests. */
   now: number;
 }
 

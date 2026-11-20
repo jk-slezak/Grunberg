@@ -5,7 +5,6 @@ import styles from "./CharacterCreator.module.css";
 
 interface CharacterCreatorProps {
   onCharacterCreated: (character: Character) => void;
-  /** True while the game is being created: blocks a second submit. */
   submitting?: boolean;
   error?: string | null;
 }

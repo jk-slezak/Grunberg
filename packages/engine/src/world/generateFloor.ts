@@ -1,10 +1,11 @@
 import type { DungeonFloor, MapTile, Position } from "../types/gameState";
-import { createRandom, type Random } from "./random";
+import { createSeededRandom, type Random } from "./random";
 
 export const FLOOR_SIZE = 24;
 const ROOM_ATTEMPTS = 40;
 const MIN_ROOM = 3;
 const MAX_ROOM = 6;
+const BORDER_WIDTH = 1;
 
 interface Room {
   x: number;
@@ -24,23 +25,21 @@ const center = (room: Room): Point => ({
   y: room.y + Math.floor(room.height / 2),
 });
 
-/** Rooms keep one wall tile between each other, so they never merge into one blob. */
-const overlaps = (a: Room, b: Room) =>
+const touchesOrOverlaps = (a: Room, b: Room) =>
   a.x <= b.x + b.width && b.x <= a.x + a.width && a.y <= b.y + b.height && b.y <= a.y + a.height;
 
 const placeRooms = (random: Random): Room[] => {
   const rooms: Room[] = [];
   for (let i = 0; i < ROOM_ATTEMPTS; i++) {
-    const width = random.int(MIN_ROOM, MAX_ROOM);
-    const height = random.int(MIN_ROOM, MAX_ROOM);
-    // Inside the border: the outermost ring of the map is always wall.
+    const width = random.intInclusive(MIN_ROOM, MAX_ROOM);
+    const height = random.intInclusive(MIN_ROOM, MAX_ROOM);
     const room = {
-      x: random.int(1, FLOOR_SIZE - width - 1),
-      y: random.int(1, FLOOR_SIZE - height - 1),
+      x: random.intInclusive(BORDER_WIDTH, FLOOR_SIZE - width - BORDER_WIDTH),
+      y: random.intInclusive(BORDER_WIDTH, FLOOR_SIZE - height - BORDER_WIDTH),
       width,
       height,
     };
-    if (!rooms.some((other) => overlaps(room, other))) rooms.push(room);
+    if (!rooms.some((other) => touchesOrOverlaps(room, other))) rooms.push(room);
   }
   return rooms;
 };
@@ -51,9 +50,8 @@ const carveRoom = (grid: TileType[][], room: Room) => {
   }
 };
 
-/** An L-shaped corridor. Linking every room to the previous one keeps the whole floor connected. */
 const carveCorridor = (grid: TileType[][], from: Point, to: Point, random: Random) => {
-  const corner = random.next() < 0.5 ? { x: to.x, y: from.y } : { x: from.x, y: to.y };
+  const corner = random.nextFloat() < 0.5 ? { x: to.x, y: from.y } : { x: from.x, y: to.y };
   for (const [a, b] of [
     [from, corner],
     [corner, to],
@@ -64,20 +62,15 @@ const carveCorridor = (grid: TileType[][], from: Point, to: Point, random: Rando
   }
 };
 
-/**
- * Builds a floor from a seed: rooms joined by corridors, walls all around, a spawn point in the
- * first room and stairs down in the last one. Pure: the same seed always gives the same floor.
- */
 export const generateFloor = (
   seed: string,
   floorNumber: number,
 ): { floor: DungeonFloor; spawn: Position } => {
-  const random = createRandom(`${seed}:${floorNumber}`);
+  const random = createSeededRandom(`${seed}:${floorNumber}`);
   const grid: TileType[][] = Array.from({ length: FLOOR_SIZE }, () =>
     Array<TileType>(FLOOR_SIZE).fill("wall"),
   );
 
-  // The first attempt always fits on an empty map, so there is at least one room.
   const rooms = placeRooms(random);
   rooms.forEach((room, i) => {
     carveRoom(grid, room);

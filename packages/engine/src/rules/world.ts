@@ -4,7 +4,6 @@ import { generateFloor } from "../world/generateFloor";
 import { moveTarget, revealAround } from "../world/movement";
 import { unchanged, type ActionResult, type Handlers } from "./core";
 
-/** Puts the player on `position` of `floor` and reveals what they can see from there. */
 const placePlayer = (
   state: GameState,
   floor: DungeonFloor,
@@ -19,7 +18,6 @@ const placePlayer = (
   return { state: { ...state, currentFloor: revealedFloor, position }, events: allEvents };
 };
 
-/** Where the player is and what they have done: position and story flags. */
 export const worldRules = {
   MOVE: (state, { payload: { direction } }) => {
     const move = moveTarget(state, direction);
@@ -60,7 +58,6 @@ export const worldRules = {
   },
 } satisfies Pick<Handlers, "MOVE" | "ENTER_FLOOR" | "UPDATE_POSITION" | "SET_FLAG">;
 
-/** Whole-session operations: loading, resetting and tracking playtime. */
 export const sessionRules = {
   LOAD_STATE: (_state, { payload }, ctx) => ({
     state: payload,

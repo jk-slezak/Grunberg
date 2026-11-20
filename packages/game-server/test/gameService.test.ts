@@ -9,7 +9,7 @@ import {
   getGame,
   InMemoryGameRepository,
   IntentRejected,
-  MAX_ACTIONS_PER_GAME,
+  MAX_REQUESTS_PER_GAME,
   performIntents,
   restoreGame,
   StaleVersion,
@@ -165,9 +165,9 @@ describe("gameService", () => {
 
   it("stops accepting actions once a game reaches its length limit", async () => {
     const { id, state, version } = await newGame(0);
-    for (let v = version; v < MAX_ACTIONS_PER_GAME; v++) await repo.save(id, v, state, []);
+    for (let v = version; v < MAX_REQUESTS_PER_GAME; v++) await repo.save(id, v, state, []);
 
-    expect(await rejection(moves(id, MAX_ACTIONS_PER_GAME, "east"))).toBe("length_limit");
+    expect(await rejection(moves(id, MAX_REQUESTS_PER_GAME, "east"))).toBe("length_limit");
   });
 
   it("rejects a stale version and returns the current game", async () => {

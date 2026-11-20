@@ -14,12 +14,11 @@ const messages = (count: number): ChatMessage[] =>
 
 describe("useScrollToEnd (MessageList)", () => {
   it("scrolls the chat to the newest message whenever one is added", () => {
-    // jsdom has no layout: pretend the content is taller than the list.
     vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(500);
 
     const { rerender } = render(<MessageList messages={messages(1)} />);
     const log = screen.getByRole("log");
-    log.scrollTop = 0; // the player scrolled up to read
+    log.scrollTop = 0;
 
     rerender(<MessageList messages={messages(2)} />);
 

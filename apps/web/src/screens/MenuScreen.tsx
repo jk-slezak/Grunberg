@@ -14,7 +14,6 @@ export const MenuScreen = () => {
   const { startAsync: restore } = useStartGame(api.restoreGame);
 
   const continueGame = () => {
-    // Load the saved game fresh: what's cached may be from before the server copy expired.
     queryClient.removeQueries({ queryKey: GAME_QUERY_KEY });
     router.push("/game");
   };

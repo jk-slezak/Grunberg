@@ -41,7 +41,6 @@ export interface MiscItem extends ItemBase {
   type: "quest" | "misc";
 }
 
-/** Discriminated by `type`: narrowing on it gives the right fields without casts. */
 export type Item = WeaponItem | ArmorItem | ConsumableItem | MiscItem;
 export type ItemType = Item["type"];
 export type EquippableItem = WeaponItem | ArmorItem;

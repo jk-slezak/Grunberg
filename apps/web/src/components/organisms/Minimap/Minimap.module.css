@@ -1,4 +1,3 @@
-/* Sized by the height of its row, so it shrinks with the window and stays square. */
 .minimap {
   height: 100%;
   max-width: 100%;

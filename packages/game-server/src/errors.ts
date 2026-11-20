@@ -20,7 +20,6 @@ export class StaleVersion extends GameError {
   }
 }
 
-/** Why the server refused a request's intents: an engine rule, or a server-side limit. */
 export type RejectionReason = IntentRejection | "length_limit";
 
 const REJECTION_MESSAGES: Record<RejectionReason, string> = {
@@ -37,7 +36,6 @@ export class IntentRejected extends GameError {
   }
 }
 
-/** A restore request carried a snapshot this server did not sign, or one that was altered. */
 export class InvalidSnapshot extends GameError {
   constructor() {
     super("Invalid or tampered save");

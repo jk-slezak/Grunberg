@@ -195,7 +195,7 @@ describe("equipment", () => {
     const state = withItems(sword(5, "heavy"), potion);
     expect(equip(state, "missing").events).toEqual([]);
     expect(equip(state, "potion").events).toEqual([]);
-    expect(equip(state, "heavy").events).toEqual([]); // level 1 < 5
+    expect(equip(state, "heavy").events).toEqual([]);
   });
 
   it("unequips into the backpack only when there is room", () => {

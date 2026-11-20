@@ -56,7 +56,6 @@ describe("snapshots", () => {
   });
 
   it("rejects a correctly signed payload that is not a valid game state", () => {
-    // Only someone holding the secret could produce this; validated anyway (schema changes).
     const payload = Buffer.from(JSON.stringify({ hello: "world" })).toString("base64url");
     const signature = createHmac("sha256", SECRET)
       .update(`grunberg-snapshot.v1.${payload}`)

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { MAX_INTENTS_PER_REQUEST, type Intent } from "@grunberg/engine";
+import type { GameView } from "@/api/client";
 import { MAX_BODY_BYTES } from "@/server/request";
 import { RULES } from "@/server/rateLimit";
 import { MAX_RESTORE_BODY_BYTES } from "@/server/snapshots";
@@ -32,13 +33,6 @@ const post = (body: unknown, headers: Record<string, string> = {}) =>
   postTo("/api/games", body, headers);
 
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
-
-interface GameView {
-  id: string;
-  version: number;
-  snapshot: string;
-  state: { inventory: { currency: { gold: number } } };
-}
 
 const newGame = async () => (await (await createGame(post({ character }))).json()) as GameView;
 
@@ -187,13 +181,13 @@ describe("/api/games routes", () => {
     expect(await res.json()).toMatchObject({ reason: "no_effect" });
   });
 
-  it("counts every intent of a batch against the global action limit", async () => {
+  it("counts a batch as one request against the global action limit", async () => {
     const { id } = await newGame();
     const batch = Array(MAX_INTENTS_PER_REQUEST).fill(equipUnknown);
-    const fullBatches = RULES.action.limit / MAX_INTENTS_PER_REQUEST;
-    for (let i = 0; i < fullBatches; i++)
+    for (let i = 0; i < RULES.action.limit; i++) {
       expect((await sendIntents(id, 0, batch)).status).toBe(422);
-    expect((await sendIntents(id, 0, [equipUnknown])).status).toBe(429);
+    }
+    expect((await sendIntents(id, 0, batch)).status).toBe(429);
   });
 
   it("429 with Retry-After once the global game-creation limit is used up", async () => {

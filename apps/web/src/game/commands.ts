@@ -1,6 +1,5 @@
 import type { Direction, Intent } from "@grunberg/engine";
 
-// A Map, not an object: player text must never reach prototype keys like "constructor".
 const DIRECTION_WORDS = new Map<string, Direction>([
   ["n", "north"],
   ["north", "north"],
@@ -20,10 +19,8 @@ const DIRECTION_WORDS = new Map<string, Direction>([
   ["zachod", "west"],
 ]);
 
-/** Filler words players type before a direction: "idź na północ", "go north". */
 const FILLER = new Set(["idź", "idz", "na", "go", "move", "walk"]);
 
-/** Turns a chat command into an intent, or null if it isn't one the game understands. */
 export const parseCommand = (text: string): Intent | null => {
   const words = text
     .normalize("NFC")

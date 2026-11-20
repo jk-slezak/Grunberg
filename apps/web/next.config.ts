@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
+const NEXT_INLINE_HYDRATION_SCRIPTS = "'unsafe-inline'";
+const NEXT_DEV_EVAL = isDev ? " 'unsafe-eval'" : "";
 
-// Pages are statically prerendered, so per-request nonces are impossible: the inline scripts
-// Next.js emits for hydration need 'unsafe-inline'. Everything else is locked to our origin.
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' ${NEXT_INLINE_HYDRATION_SCRIPTS}${NEXT_DEV_EVAL}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
@@ -20,7 +20,6 @@ const contentSecurityPolicy = [
 const securityHeaders = [
   { key: "Content-Security-Policy", value: contentSecurityPolicy },
   { key: "X-Content-Type-Options", value: "nosniff" },
-  // Game ids act as secrets until accounts exist: never leak URLs to other sites.
   { key: "Referrer-Policy", value: "no-referrer" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
   { key: "X-Frame-Options", value: "DENY" },

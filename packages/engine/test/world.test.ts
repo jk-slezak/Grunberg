@@ -29,7 +29,6 @@ const seeds = fc.string({ minLength: 1, maxLength: 36 });
 
 const walkable = (floor: DungeonFloor) => floor.tiles.flat().filter((t) => t.type !== "wall");
 
-/** Every walkable tile reachable from (x, y) by steps north/south/east/west. */
 const reachableFrom = (floor: DungeonFloor, x: number, y: number) => {
   const seen = new Set<string>();
   const queue = [{ x, y }];
@@ -48,7 +47,6 @@ const reachableFrom = (floor: DungeonFloor, x: number, y: number) => {
   return seen.size;
 };
 
-/** A hero standing on a generated floor 1. */
 const onFloor = (seed = "test-seed"): GameState => {
   const created = applyAction(
     createInitialGameState(NOW),
@@ -59,7 +57,6 @@ const onFloor = (seed = "test-seed"): GameState => {
     .state;
 };
 
-/** A hand-made 3×3 floor: only the middle row is open, the player stands at (0, 1). */
 const corridor = (): GameState => {
   const tiles = [0, 1, 2].map((y) =>
     [0, 1, 2].map((x): MapTile => ({

@@ -18,6 +18,7 @@ import {
 import type { Skill } from "../../organisms/SkillBar/SkillBar";
 import type { GameState } from "@grunberg/engine";
 import type { ChatMessage } from "../../../chat/types";
+import { locationName, toPlayerStats } from "../../../game/hud";
 
 const ACTION_BUTTONS = [
   { id: 1, label: "Questy", icon: <GiScrollQuill />, hotKey: "Q" },
@@ -40,11 +41,11 @@ export interface GameLayoutProps {
 }
 
 export const GameLayout = ({ state, messages, onCommand }: GameLayoutProps) => {
-  const { characterStatus: status, position } = state;
+  const playerStats = toPlayerStats(state);
   return (
     <div className={styles["game-layout"]}>
       <header className={styles["game-layout__header"]}>
-        <GameHeader level={status?.level} location={`Mglista Wieża – piętro ${position.floor}`} />
+        <GameHeader level={state.characterStatus?.level} location={locationName(state.position)} />
       </header>
 
       <main className={styles["game-layout__chat"]}>
@@ -52,23 +53,11 @@ export const GameLayout = ({ state, messages, onCommand }: GameLayoutProps) => {
       </main>
 
       <aside className={styles["game-layout__minimap"]}>
-        <Minimap floor={state.currentFloor} position={position} />
+        <Minimap floor={state.currentFloor} position={state.position} />
       </aside>
 
       <aside className={styles["game-layout__hud"]}>
-        {status && (
-          <PlayerStats
-            hp={{ current: status.hp, max: status.maxHp }}
-            mana={{ current: status.mp, max: status.maxMp }}
-            exp={{ current: status.exp, max: status.expToNextLevel }}
-            stats={[
-              { label: "Siła", value: status.currentStats.strength },
-              { label: "Zręczność", value: status.currentStats.agility },
-              { label: "Inteligencja", value: status.currentStats.intelligence },
-            ]}
-            gold={state.inventory.currency.gold}
-          />
-        )}
+        {playerStats && <PlayerStats {...playerStats} />}
       </aside>
 
       <section className={styles["game-layout__skills"]}>
