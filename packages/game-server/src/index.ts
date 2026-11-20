@@ -4,4 +4,5 @@ export * from "./rateLimit";
 export * from "./repository";
 export * from "./retention";
 export * from "./schemas";
+export * from "./snapshot";
 export { connectPostgres } from "./db/postgres";

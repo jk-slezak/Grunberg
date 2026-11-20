@@ -4,7 +4,7 @@ A single-player, text-based RPG dungeon crawler that runs in the browser: a chat
 
 **Play:** https://grunberg-game.vercel.app
 
-> **Status:** the game engine, the API and the Next.js app are in place. Next up: connecting the game screen to the API ([roadmap](#roadmap)).
+> **Status:** a playable slice: every game starts on a seeded dungeon floor that you explore with the arrow keys, played through the authoritative API with optimistic updates. Next up: content as data ([roadmap](#roadmap)).
 
 ## Core idea: content as data, the engine decides
 
@@ -15,7 +15,7 @@ A single-player, text-based RPG dungeon crawler that runs in the browser: a chat
 ```mermaid
 flowchart LR
   P[Player] -->|chat / arrow keys| W[Next.js UI<br/>apps/web]
-  W -->|intent + expectedVersion| R[Route Handlers<br/>/api/games]
+  W -->|intents + expectedVersion| R[Route Handlers<br/>/api/games]
   R --> S[packages/game-server<br/>use cases]
   C[content<br/>TS data + Zod] --> E
   S --> E[packages/engine<br/>pure rules]
@@ -26,12 +26,12 @@ flowchart LR
 
 ## Repository layout
 
-| Path                   | What it is                                                                                                                                                                                                                                                                                               |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/engine`      | Pure TypeScript game rules: `applyAction(state, action, ctx) → { state, events }`. No I/O and no React, with an injected clock. Unit and property-based tests (fast-check).                                                                                                                              |
-| `packages/game-server` | Framework-agnostic server logic, the source of truth. Clients send **intents** (`move east`), never state changes. Use cases (`createGame`, `performIntent`…) validate them with Zod and throw domain errors. Postgres via Drizzle stores sessions with optimistic locking and an append-only event log. |
-| `apps/web`             | Next.js (App Router) app. Routes `/`, `/new` and `/game` render a React 19 UI built with atomic design and CSS Modules. Thin Route Handlers under `/api/games` call `game-server` and map domain errors to HTTP status codes in one place.                                                               |
-| `docs/`                | Game design notes and architecture docs.                                                                                                                                                                                                                                                                 |
+| Path                   | What it is                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/engine`      | Pure TypeScript game rules: `applyAction(state, action, ctx) → { state, events }`. No I/O and no React, with an injected clock. Unit and property-based tests (fast-check).                                                                                                                                                                                                                                   |
+| `packages/game-server` | Framework-agnostic server logic, the source of truth. Clients send **intents** (`move east`), never state changes. Use cases (`createGame`, `performIntents`, `restoreGame`…) validate them with Zod and throw domain errors. Every state it hands out is signed, so a player can keep it and bring it back later. Postgres via Drizzle stores sessions with optimistic locking and an append-only event log. |
+| `apps/web`             | Next.js (App Router) app. Routes `/`, `/new` and `/game` render a React 19 UI built with atomic design and CSS Modules. Thin Route Handlers under `/api/games` call `game-server` and map domain errors to HTTP status codes in one place.                                                                                                                                                                    |
+| `docs/`                | Game design notes and architecture docs.                                                                                                                                                                                                                                                                                                                                                                      |
 
 ## Running locally
 
@@ -39,7 +39,7 @@ flowchart LR
 nvm use                 # Node 26 (see .nvmrc)
 npm install
 npm test                # engine, game-server, store and API route tests
-npm run dev             # app + API on http://localhost:3000 (in-memory storage)
+npm run dev             # app + API on http://localhost:3000 (in-memory storage, dev snapshot key)
 
 # with Postgres
 docker compose up -d
@@ -54,12 +54,15 @@ npm run db:generate --workspace @grunberg/game-server   # writes a new migration
 
 ### API
 
-| Method | Path                     |                                                                                                                                            |
-| ------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `POST` | `/api/games`             | create a game from a character (`{ character }`)                                                                                           |
-| `GET`  | `/api/games/:id`         | current state and version                                                                                                                  |
-| `POST` | `/api/games/:id/actions` | `{ expectedVersion, intent }` → new state and events. Returns `409` with the current game on a stale version and `422` on an illegal move. |
-| `GET`  | `/api/games/:id/events`  | event log of the session                                                                                                                   |
+| Method | Path                     |                                                                                                                                                                                                                                                                                         |
+| ------ | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/games`             | create a game from a character (`{ character }`) on a freshly seeded first floor                                                                                                                                                                                                        |
+| `GET`  | `/api/games/:id`         | current state and version                                                                                                                                                                                                                                                               |
+| `POST` | `/api/games/:id/actions` | `{ expectedVersion, intents }` (1–10 intents, applied in order) → new state and events. A refused intent stops the batch and is reported as `rejected: { index, reason }`. `409` with the current game on a stale version, `422` with a `reason` code when the first intent is refused. |
+| `POST` | `/api/games/restore`     | `{ snapshot }` → a new game from a snapshot this server signed. `400` if it was altered.                                                                                                                                                                                                |
+| `GET`  | `/api/games/:id/events`  | event log of the session                                                                                                                                                                                                                                                                |
+
+Every game response carries `snapshot`: the state signed by the server (see the security model).
 
 ## Security model
 
@@ -72,21 +75,27 @@ npm run db:generate --workspace @grunberg/game-server   # writes a new migration
 - **No personal data on the server.** No accounts, no IPs (not even hashed), no cookies. The only free text is the character name.
 - **Rate limits without tracking anyone:**
   - per-IP limits are enforced by Vercel Firewall at the edge, so IPs never reach our database;
-  - the app adds global write limits in Postgres (game creation 300/hour, actions 600/min) that protect the free-tier database quota. Only valid requests count, so malformed traffic cannot use up the quota. Over the limit the API answers `429` with `Retry-After`.
-  - one game accepts at most 5000 actions, which also bounds the size of its event log.
-- **Server copies of games expire 24 h after the last change.** Expiry is checked on every read, and a daily cron (`/api/cron/cleanup`, protected by `CRON_SECRET`) deletes the rows. The local save (autosave, export) is the player's own long-term copy.
+  - the app adds global write limits in Postgres (game creation and restores 300/hour, action requests 600/min) that protect the free-tier database quota. A request is one transaction of at most 10 intents, so it counts once: one client at the per-IP limit uses a tenth of the quota. Under a flood a request may write up to about 20 small event rows, bounded by the per-game cap below and the 24 h retention. Only valid requests count, so malformed traffic cannot use up the quota. Over the limit the API answers `429` with `Retry-After`.
+  - one game accepts at most 5000 requests of up to 10 intents each, which also bounds the size of its event log.
+  - the client sends at most one request per 1.2 s (moves made meanwhile go in one batch) and checks moves locally with the same engine, so walking into a wall costs no request.
+- **Server copies of games expire 24 h after the last change.** Expiry is checked on every read, and a daily cron (`/api/cron/cleanup`, protected by `CRON_SECRET`) deletes the rows. The local save is the player's own long-term copy.
+- **Signed snapshots keep games beyond those 24 h without trusting the client.** Every game response includes `snapshot`, the state signed with HMAC-SHA256 under `SNAPSHOT_SECRET`, which the browser keeps in localStorage. When the server copy is gone, `POST /api/games/restore` verifies the signature (in constant time, before parsing anything) and validates the state with `gameStateSchema`, then starts a new game from it. An edited save is refused.
+  - Snapshots are signed, not encrypted: players can read their own state, but not change it.
+  - Known trade-off: a player can restore an _older_ snapshot of their own game. That is acceptable for a single-player game; accounts will tie saves to a player.
+  - Without `SNAPSHOT_SECRET` the API refuses to run in production, because a known key would let anyone forge saves.
 - **Headers:** CSP (`'self'` only; inline scripts are allowed because pages are statically prerendered), `frame-ancestors 'none'`, `nosniff`, `Permissions-Policy`, no `X-Powered-By`, `Cache-Control: no-store` on the API.
-- **Local saves and imported save files** are validated against the same `gameStateSchema` (bounded sizes, 1 MB file limit) before they reach the game.
+- **Local saves and imported save files** hold only the game id and the signed snapshot. They are validated with Zod (UUID id, 1 MB limit), and the server decides whether the snapshot is genuine. Version 1 saves (raw, unsigned state) are ignored.
 - **Supply chain:** dependencies are pinned to exact versions (`save-exact`). CI actions are pinned to commit SHAs, the Vercel CLI to an exact version (only in the deploy job), and `GITHUB_TOKEN` is read-only.
 
 ## Deployment (Vercel + Neon, both free tiers)
 
 1. **Database:** create a Neon project in an EU region (Frankfurt). Put its _pooled_ connection string into Vercel as `DATABASE_URL`, then run `npm run db:migrate --workspace @grunberg/game-server` with that `DATABASE_URL`.
 2. **Cron secret:** add `CRON_SECRET` in Vercel (`openssl rand -hex 32`). Vercel Cron sends it to `/api/cron/cleanup` once a day (`apps/web/vercel.json`).
-3. **Firewall:** in Vercel → Firewall, add one rate-limit rule: path starts with `/api/`, 60 requests per 60 s per IP, action _Deny (429)_.
-4. **Project settings:** Root Directory `apps/web`, framework Next.js, functions region `fra1`.
+3. **Snapshot secret:** add `SNAPSHOT_SECRET` in Vercel (`openssl rand -hex 32`, at least 32 characters). Changing it invalidates every save players hold.
+4. **Firewall:** in Vercel → Firewall, add one rate-limit rule: path starts with `/api/`, 60 requests per 60 s per IP, action _Deny (429)_.
+5. **Project settings:** Root Directory `apps/web`, framework Next.js, functions region `fra1`.
 
-Without `DATABASE_URL` the API refuses to run in production instead of silently keeping games in memory.
+Without `DATABASE_URL` or `SNAPSHOT_SECRET` the API refuses to run in production instead of silently keeping games in memory or signing saves with a known key.
 
 ## Roadmap
 
@@ -94,9 +103,10 @@ Without `DATABASE_URL` the API refuses to run in production instead of silently 
 - [x] Monorepo; game rules extracted into a pure, tested engine
 - [x] Authoritative game API, Postgres persistence, event log, optimistic locking
 - [x] Next.js App Router: menu, character creator and game as routes; the API as Route Handlers
-- [ ] Web ↔ API with TanStack Query: optimistic updates with rollback on `409`/`422`; state survives refreshes and devices
+- [x] Web ↔ API with TanStack Query: optimistic updates with rollback on `409`/`422`; state survives refreshes; signed snapshots restore expired games
+- [x] Seeded first floor, minimap with fog of war, arrow-key and chat-command movement
 - [ ] Content as data: dialogues and quests as TypeScript data validated with Zod; narration generated from engine events
-- [ ] Procedural dungeon floors from a seed, minimap with fog of war, arrow-key movement
+- [ ] More floors: stairs between seeded floors, enemies and chests placed by the generator
 - [ ] Combat (4 actions), inventory and equipment, quest log
 - [ ] Accessibility: full keyboard play, `aria-live` narration, focus management, `prefers-reduced-motion`; axe checks
 - [ ] Responsive layout: playable on a phone
@@ -106,4 +116,4 @@ Without `DATABASE_URL` the API refuses to run in production instead of silently 
 
 ## License
 
-MIT
+GNU GENERAL PUBLIC LICENSE v3

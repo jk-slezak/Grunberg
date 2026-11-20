@@ -16,6 +16,10 @@
   background: var(--map-unexplored);
 }
 
+.map-cell--stairs {
+  background: var(--map-stairs);
+}
+
 .map-cell--player {
   background: var(--map-player);
   box-shadow: 0 0 8px var(--map-player-glow);
@@ -31,5 +35,15 @@
   50% {
     opacity: 0.8;
     transform: scale(0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-cell {
+    transition: none;
+  }
+
+  .map-cell--player {
+    animation: none;
   }
 }

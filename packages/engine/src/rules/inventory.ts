@@ -2,7 +2,6 @@ import { event } from "../events";
 import type { InventorySlot, Item } from "../types";
 import { unchanged, withInventory, type Handlers } from "./core";
 
-/** Adds items to the backpack, or returns null when the stack or the backpack is full. */
 const addToBackpack = (
   slots: InventorySlot[],
   item: Item,
@@ -18,7 +17,6 @@ const addToBackpack = (
   return [...slots, { item, quantity }];
 };
 
-/** Removes items from the backpack, or returns null when the player doesn't have enough. */
 const removeFromBackpack = (
   slots: InventorySlot[],
   itemId: string,
@@ -52,7 +50,6 @@ export const inventoryRules = {
     };
   },
 
-  /** Moves an owned weapon or armor from the backpack to its slot; the previous one goes back. */
   EQUIP_ITEM: (state, { payload: { itemId } }) => {
     const item = state.inventory.items.find((s) => s.item.id === itemId)?.item;
     if (!item || (item.type !== "weapon" && item.type !== "armor")) return unchanged(state);
@@ -71,7 +68,6 @@ export const inventoryRules = {
     };
   },
 
-  /** Moves the equipped item back to the backpack, if there is room for it. */
   UNEQUIP_ITEM: (state, { payload: { slot } }) => {
     const { equipment, items, capacity } = state.inventory;
     const current = equipment[slot];
@@ -88,11 +84,11 @@ export const inventoryRules = {
   UPDATE_CURRENCY: (state, { payload: { type, amount } }) => {
     const before = state.inventory.currency[type];
     const after = Math.max(0, before + amount);
-    if (after === before) return unchanged(state);
+    const actualChange = after - before;
+    if (actualChange === 0) return unchanged(state);
     return {
       state: withInventory(state, { currency: { ...state.inventory.currency, [type]: after } }),
-      // The amount that actually changed, not the requested one.
-      events: [event("CURRENCY_CHANGED", { type, amount: after - before })],
+      events: [event("CURRENCY_CHANGED", { type, amount: actualChange })],
     };
   },
 } satisfies Pick<

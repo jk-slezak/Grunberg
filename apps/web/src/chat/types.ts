@@ -1,4 +1,3 @@
-/** Chat data shared by hooks and components (components render it, hooks produce it). */
 export type MessageType = "narration" | "action" | "dialogue" | "system";
 
 export interface ChatMessage {
@@ -6,3 +5,5 @@ export interface ChatMessage {
   type: MessageType;
   text: string;
 }
+
+export type MessageDraft = Omit<ChatMessage, "id">;

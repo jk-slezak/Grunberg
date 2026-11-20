@@ -1,24 +1,25 @@
 import { useCallback, useRef, useState } from "react";
-import type { ChatMessage } from "../chat/types";
+import type { ChatMessage, MessageDraft } from "../chat/types";
 
 const INITIAL_MESSAGES: ChatMessage[] = [
-  { id: 1, type: "narration", text: "Witaj w Mglistej Wieży..." },
-  { id: 2, type: "action", text: "Rozglądasz się wokół." },
   {
-    id: 3,
+    id: 1,
     type: "narration",
-    text: "Przed tobą rozciąga się długi korytarz. Światło pochodni rzuca tańczące cienie na kamienne ściany.",
+    text: "Witaj w Mglistej Wieży. Światło pochodni rzuca tańczące cienie na kamienne ściany.",
   },
 ];
+
+export const MAX_MESSAGES = 200;
 
 export const useChatMessages = () => {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const nextId = useRef(INITIAL_MESSAGES.length + 1);
 
-  const sendMessage = useCallback((text: string) => {
-    const message: ChatMessage = { id: nextId.current++, type: "action", text };
-    setMessages((current) => [...current, message]);
+  const append = useCallback((drafts: readonly MessageDraft[]) => {
+    if (drafts.length === 0) return;
+    const added = drafts.map((draft) => ({ ...draft, id: nextId.current++ }));
+    setMessages((current) => [...current, ...added].slice(-MAX_MESSAGES));
   }, []);
 
-  return { messages, sendMessage };
+  return { messages, append };
 };

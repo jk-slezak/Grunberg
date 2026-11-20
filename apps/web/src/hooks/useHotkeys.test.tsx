@@ -17,7 +17,7 @@ describe("useHotkeys", () => {
     const onPress = vi.fn();
     const { result } = renderHook(() => useHotkeys([{ key: "Q", onPress }]));
 
-    press("q"); // case-insensitive
+    press("q");
     expect(onPress).toHaveBeenCalledTimes(1);
     expect(result.current).toBe("Q");
 
@@ -69,7 +69,7 @@ describe("useHotkeys", () => {
     );
 
     press("1");
-    press("Q"); // works without focusing the button
+    press("Q");
     expect(attack).toHaveBeenCalledTimes(1);
     expect(quests).toHaveBeenCalledTimes(1);
   });

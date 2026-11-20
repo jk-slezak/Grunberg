@@ -1,9 +1,39 @@
 import { event, type GameEvent } from "../events";
-import { createInitialGameState } from "../types";
-import { unchanged, type Handlers } from "./core";
+import { createInitialGameState, type DungeonFloor, type GameState, type Position } from "../types";
+import { generateFloor } from "../world/generateFloor";
+import { moveTarget, revealAround } from "../world/movement";
+import { unchanged, type ActionResult, type Handlers } from "./core";
 
-/** Where the player is and what they have done: position and story flags. */
+const placePlayer = (
+  state: GameState,
+  floor: DungeonFloor,
+  position: Position,
+  events: GameEvent[],
+): ActionResult => {
+  const { floor: revealedFloor, revealed } = revealAround(floor, position);
+  const allEvents = [...events, event("POSITION_CHANGED", position)];
+  if (revealed > 0) {
+    allEvents.push(event("TILES_REVEALED", { floor: position.floor, count: revealed }));
+  }
+  return { state: { ...state, currentFloor: revealedFloor, position }, events: allEvents };
+};
+
 export const worldRules = {
+  MOVE: (state, { payload: { direction } }) => {
+    const move = moveTarget(state, direction);
+    if (!move.ok || !state.currentFloor) return unchanged(state);
+    return placePlayer(state, state.currentFloor, move.target, []);
+  },
+
+  ENTER_FLOOR: (state, { payload: { floorNumber, seed } }) => {
+    const { floor, spawn } = generateFloor(seed, floorNumber);
+    const changed =
+      floorNumber !== state.position.floor
+        ? [event("FLOOR_CHANGED", { oldFloor: state.position.floor, newFloor: floorNumber })]
+        : [];
+    return placePlayer(state, floor, spawn, changed);
+  },
+
   UPDATE_POSITION: (state, { payload: position }) => {
     const events: GameEvent[] = [event("POSITION_CHANGED", position)];
     if (position.floor !== state.position.floor) {
@@ -26,9 +56,8 @@ export const worldRules = {
       ],
     };
   },
-} satisfies Pick<Handlers, "UPDATE_POSITION" | "SET_FLAG">;
+} satisfies Pick<Handlers, "MOVE" | "ENTER_FLOOR" | "UPDATE_POSITION" | "SET_FLAG">;
 
-/** Whole-session operations: loading, resetting and tracking playtime. */
 export const sessionRules = {
   LOAD_STATE: (_state, { payload }, ctx) => ({
     state: payload,

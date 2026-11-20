@@ -9,13 +9,13 @@ Grunberg is a TypeScript monorepo. Game rules live in one pure engine, the serve
 | Layer                  | Responsibility                                                                                                                                                                               |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/engine`      | Pure game rules: `applyAction(state, action, ctx) → { state, events }`. No I/O, no React; the clock is injected (`ctx.now`). Also holds the shared types, character rules and `gameStateSchema`. |
-| `packages/game-server` | Framework-agnostic use cases (`createGame`, `getGame`, `getEvents`, `performIntent`), domain errors, Zod schemas for requests, Postgres access (Drizzle), rate limits and retention.            |
+| `packages/game-server` | Framework-agnostic use cases (`createGame`, `getGame`, `getEvents`, `performIntents`, `restoreGame`), signed snapshots, domain errors, Zod schemas for requests, Postgres access (Drizzle), rate limits and retention.            |
 | `apps/web`             | Next.js app: UI routes (`/`, `/new`, `/game`) and thin Route Handlers under `/api/games` that call `game-server`.                                                                           |
 
 ```mermaid
 flowchart LR
   P[Player] -->|chat / arrow keys| W[Next.js UI<br/>apps/web]
-  W -->|intent + expectedVersion| R[Route Handlers<br/>/api/games]
+  W -->|intents + expectedVersion| R[Route Handlers<br/>/api/games]
   R --> S[packages/game-server<br/>use cases]
   C[content<br/>TS data + Zod] -.planned.-> E
   S --> E[packages/engine<br/>pure rules]
@@ -26,24 +26,25 @@ flowchart LR
 
 ### Request flow
 
-1. The client sends an **intent**, never a state change: `{ expectedVersion, intent: { type: "move", direction: "east" } }`.
-2. `readJson` (`apps/web/src/server/request.ts`) checks the origin, the content type (`application/json`) and the body size (16 KB), parses the JSON and validates it with the Zod schema.
-3. `performIntent` loads the game, rejects a stale `expectedVersion` (`409` with the current game) and turns the intent into an engine action (`intentToAction`). Illegal intents, like walking into a wall, are rejected (`422`).
-4. The engine computes the new state and events. The repository saves both in one transaction, guarded by `WHERE version = expectedVersion`.
-5. `handle` (`apps/web/src/server/http.ts`) maps domain errors to HTTP status codes in one place. Anything unexpected surfaces as a logged `500`.
+1. The client sends **intents**, never state changes: `{ expectedVersion, intents: [{ type: "move", direction: "east" }] }` (1–10 per request).
+2. `readJson` (`apps/web/src/server/request.ts`) checks the origin, the content type (`application/json`) and the body size (16 KB), parses the JSON and validates it with the Zod schema. The global rate limit counts every intent.
+3. `performIntents` loads the game and rejects a stale `expectedVersion` (`409` with the current game). The engine's `applyIntents` (`packages/engine/src/intents.ts`) turns each intent into an engine action and applies them in order, stopping at the first one the rules refuse. If that is the first intent, the request fails with `422` and a reason code (`blocked`, `no_effect`…). Otherwise the accepted ones are saved and `rejected: { index, reason }` reports the rest.
+4. The repository saves the new state and events in one transaction, guarded by `WHERE version = expectedVersion`. One request is one new version.
+5. `handle` (`apps/web/src/server/http.ts`) maps domain errors to HTTP status codes in one place. Anything unexpected surfaces as a logged `500`. Every game in a response gets its signed `snapshot` (`withSnapshot`, `apps/web/src/server/snapshots.ts`).
 
 Security details (origin and size checks, rate limits, headers, retention) are described once, in the README section "Security model".
 
 ## State ownership (Implemented)
 
-- **API games:** the server is authoritative. A client can only ask for an intent, so it cannot add items or gold.
-- **In the browser:** `createGameStore` (`apps/web/src/core/gameStore.ts`) runs the same engine locally. Components never touch the store directly; they use hooks:
-  - `useGameState()` returns the current state (via `useSyncExternalStore`, server-render safe);
-  - `useGameActions()` returns stable actions (`createCharacter`, `loadState`, `resetState`).
-- **Why a store instead of React Context with `useReducer`:** every `dispatch` applies the action to the latest state and hands its events to an optional `emit` callback immediately, so React batching cannot drop events. Actions without effect do not re-render anything.
-- **Local saves:** `useAutoSave` writes the state to localStorage (debounced). Saves and imported files are validated with `gameStateSchema` before they reach the game.
-
-> The game screen does not call the API yet. Connecting it (TanStack Query, optimistic updates, rollback on `409`/`422`) is the next roadmap item.
+- **The server is authoritative.** A client can only ask for intents, so it cannot add items or gold.
+- **The browser predicts; the server decides.** `useGameSession` (`apps/web/src/game/useGameSession.ts`) does server reconciliation:
+  - the TanStack Query cache (`["game"]`) holds only what the server confirmed;
+  - the screen shows that state with the pending intents (queued and in flight) replayed on top by the engine's `applyIntents`, the same code the server runs;
+  - a move the rules refuse (a wall) is answered locally and never sent;
+  - pending intents go out as one batch, at most one request per 1.2 s, with `expectedVersion` from the cache;
+  - **success** replaces the confirmed state. **Any failure** drops the pending intents, which is the rollback: on `409` the cache takes the server's current game, on `404` the game is restored from its snapshot, and on `422`/`429`/network errors the confirmed state stays.
+  - The request in flight is tied to the version it was based on, not to the request status, so no frame ever shows the moves missing between the response and the cache update.
+- **Local saves:** every confirmed state is saved to localStorage as `{ gameId, snapshot }` (`apps/web/src/services/session.ts`). Continue loads the game by id and falls back to `POST /api/games/restore` with the snapshot once the server copy has expired.
 
 ## Events (Implemented)
 
@@ -65,7 +66,7 @@ const { state, events } = applyAction(
 ```
 
 - On the server, events are stored in the append-only `game_events` table, which makes a session replayable and debuggable.
-- In the browser, `createGameStore` accepts an `emit` callback for events. Nothing listens yet, so the app passes none. When the first listener arrives (quests, sound), it gets a small typed emitter, not a global singleton.
+- In the browser, the predicted events of each intent become chat narration (`apps/web/src/game/narration.ts`). Routine events the minimap already shows (`POSITION_CHANGED`, `TILES_REVEALED`) stay silent.
 
 Systems that listen to events stay decoupled: a quest system only cares that `ENEMY_DEFEATED` happened, not how combat works.
 
@@ -80,6 +81,13 @@ Systems that listen to events stay decoupled: a quest system only cares that `EN
 - Migrations live in `packages/game-server/drizzle/` (`npm run db:migrate --workspace @grunberg/game-server`).
 - A server copy expires **24 hours after its last change**. Every read passes `activeSince(now)`, so an expired game is `404` right away. The daily cron (`/api/cron/cleanup`, protected by `CRON_SECRET`) deletes the rows.
 - The player's long-term copy is the local save.
+
+## Dungeon floors (Implemented)
+
+- `generateFloor(seed, floorNumber)` (`packages/engine/src/world/generateFloor.ts`) is pure: a seeded PRNG (`world/random.ts`) places non-overlapping rooms on a 24×24 grid and joins each room to the previous one with an L-shaped corridor, so every walkable tile is reachable. The border is always wall. The player spawns in the first room and the stairs down are in the last one. Property tests check all of this for random seeds.
+- `createGame` draws a random seed (`randomUUID`) and applies `ENTER_FLOOR`, so the engine stays free of randomness and I/O.
+- `MOVE` checks the target tile and reveals everything within `VIEW_RADIUS` (fog of war: `explored` stays, `visible` follows the player). It emits `POSITION_CHANGED` and, when anything new was seen, one `TILES_REVEALED { floor, count }` rather than an event per tile, to keep the event log small.
+- The minimap shows a window centered on the player. Tiles never explored look like the void beyond the map.
 
 ## Content model (Planned)
 

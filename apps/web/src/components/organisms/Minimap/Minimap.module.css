@@ -1,4 +1,6 @@
 .minimap {
+  height: 100%;
+  max-width: 100%;
   aspect-ratio: 1;
   background: var(--background-glass);
   border: 1px solid var(--border-primary);
@@ -9,8 +11,7 @@
 
 .minimap__grid {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 0px;
+  grid-template-columns: repeat(var(--minimap-size), 1fr);
+  gap: 1px;
   background: var(--background-paper-dark);
 }

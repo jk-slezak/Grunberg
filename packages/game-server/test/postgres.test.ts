@@ -9,7 +9,7 @@ import {
   createGame,
   enforceRateLimit,
   getEvents,
-  performIntent,
+  performIntents,
   RateLimited,
   StaleVersion,
   VersionConflict,
@@ -20,7 +20,7 @@ const url = process.env.DATABASE_URL;
 describe.skipIf(!url)("Postgres", () => {
   const { games, rateLimits } = connectPostgres(url!);
   const NOW = 1_700_000_000_000;
-  const ANY_AGE = new Date(0); // repository reads that should ignore expiry
+  const INCLUDING_EXPIRED = new Date(0);
   const moved: GameEvent = { type: "POSITION_CHANGED", data: { floor: 0, x: 1, y: 0 } };
   const testRun = `test-${crypto.randomUUID()}`;
 
@@ -43,12 +43,16 @@ describe.skipIf(!url)("Postgres", () => {
       const created = track(await games.create(state, [moved]));
 
       expect(created.version).toBe(0);
-      expect(await games.get(created.id, ANY_AGE)).toEqual({ id: created.id, version: 0, state });
+      expect(await games.get(created.id, INCLUDING_EXPIRED)).toEqual({
+        id: created.id,
+        version: 0,
+        state,
+      });
       expect(await games.events(created.id)).toEqual([moved]);
     });
 
     it("returns null for an unknown game", async () => {
-      expect(await games.get("00000000-0000-4000-8000-000000000000", ANY_AGE)).toBeNull();
+      expect(await games.get("00000000-0000-4000-8000-000000000000", INCLUDING_EXPIRED)).toBeNull();
     });
 
     it("saves with optimistic locking and appends events in order", async () => {
@@ -56,7 +60,7 @@ describe.skipIf(!url)("Postgres", () => {
 
       const saved = await games.save(id, 0, { ...state, flags: { visited: true } }, [moved]);
       expect(saved.version).toBe(1);
-      expect((await games.get(id, ANY_AGE))?.state.flags).toEqual({ visited: true });
+      expect((await games.get(id, INCLUDING_EXPIRED))?.state.flags).toEqual({ visited: true });
 
       await expect(games.save(id, 0, state, [])).rejects.toBeInstanceOf(VersionConflict);
       expect(await games.events(id)).toEqual([moved]);
@@ -71,7 +75,7 @@ describe.skipIf(!url)("Postgres", () => {
       ]);
 
       expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
-      expect((await games.get(id, ANY_AGE))?.version).toBe(1);
+      expect((await games.get(id, INCLUDING_EXPIRED))?.version).toBe(1);
       expect(await games.events(id)).toHaveLength(1);
     });
 
@@ -91,10 +95,13 @@ describe.skipIf(!url)("Postgres", () => {
       );
       expect((await getEvents(games, game.id, Date.now())).map((e) => e.type)).toEqual([
         "CHARACTER_CREATED",
+        "FLOOR_CHANGED",
+        "POSITION_CHANGED",
+        "TILES_REVEALED",
       ]);
 
       await expect(
-        performIntent(games, game.id, 5, { type: "move", direction: "east" }, Date.now()),
+        performIntents(games, game.id, 5, [{ type: "move", direction: "east" }], Date.now()),
       ).rejects.toBeInstanceOf(StaleVersion);
     });
 
@@ -105,7 +112,7 @@ describe.skipIf(!url)("Postgres", () => {
       );
 
       expect(await games.get(game.id, activeSince(Date.now()))).toBeNull();
-      expect(await games.get(game.id, ANY_AGE)).not.toBeNull();
+      expect(await games.get(game.id, INCLUDING_EXPIRED)).not.toBeNull();
     });
 
     it("deletes games that were not updated since the cutoff, with their events", async () => {
@@ -116,9 +123,9 @@ describe.skipIf(!url)("Postgres", () => {
       );
 
       expect(await games.deleteInactive(new Date("2000-01-01"))).toBe(1);
-      expect(await games.get(stale.id, ANY_AGE)).toBeNull();
+      expect(await games.get(stale.id, INCLUDING_EXPIRED)).toBeNull();
       expect(await games.events(stale.id)).toEqual([]);
-      expect(await games.get(active.id, ANY_AGE)).not.toBeNull();
+      expect(await games.get(active.id, INCLUDING_EXPIRED)).not.toBeNull();
     });
   });
 

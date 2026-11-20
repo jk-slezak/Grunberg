@@ -16,6 +16,9 @@ import {
   GiWindSlap,
 } from "react-icons/gi";
 import type { Skill } from "../../organisms/SkillBar/SkillBar";
+import type { GameState } from "@grunberg/engine";
+import type { ChatMessage } from "../../../chat/types";
+import { locationName, toPlayerStats } from "../../../game/hud";
 
 const ACTION_BUTTONS = [
   { id: 1, label: "Questy", icon: <GiScrollQuill />, hotKey: "Q" },
@@ -31,23 +34,30 @@ const SKILLS: Skill[] = [
   { id: 4, name: "Unik", hotKey: "4", icon: <GiWindSlap />, cooldown: 0 },
 ];
 
-export const GameLayout = () => {
+export interface GameLayoutProps {
+  state: GameState;
+  messages: ChatMessage[];
+  onCommand: (text: string) => void;
+}
+
+export const GameLayout = ({ state, messages, onCommand }: GameLayoutProps) => {
+  const playerStats = toPlayerStats(state);
   return (
     <div className={styles["game-layout"]}>
       <header className={styles["game-layout__header"]}>
-        <GameHeader />
+        <GameHeader level={state.characterStatus?.level} location={locationName(state.position)} />
       </header>
 
       <main className={styles["game-layout__chat"]}>
-        <Chat />
+        <Chat messages={messages} onSendMessage={onCommand} />
       </main>
 
       <aside className={styles["game-layout__minimap"]}>
-        <Minimap />
+        <Minimap floor={state.currentFloor} position={state.position} />
       </aside>
 
       <aside className={styles["game-layout__hud"]}>
-        <PlayerStats />
+        {playerStats && <PlayerStats {...playerStats} />}
       </aside>
 
       <section className={styles["game-layout__skills"]}>

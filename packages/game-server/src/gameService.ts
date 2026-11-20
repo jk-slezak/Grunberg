@@ -1,25 +1,60 @@
+import { randomUUID } from "node:crypto";
 import {
   applyAction,
+  applyIntents,
   createInitialGameState,
   type Character,
   type GameEvent,
+  type GameState,
+  type GameStateAction,
+  type Intent,
+  type IntentsResult,
 } from "@grunberg/engine";
-import { GameNotFound, IntentRejected, NoEffect, StaleVersion } from "./errors";
-import { intentToAction } from "./intents";
+import { GameNotFound, IntentRejected, StaleVersion } from "./errors";
 import { VersionConflict, type GameRepository, type StoredGame } from "./repository";
 import { activeSince } from "./retention";
 
-/** Caps one game's event log (and the size of GET /events). `version` counts accepted actions. */
-export const MAX_ACTIONS_PER_GAME = 5000;
-import type { Intent } from "./schemas";
+export const MAX_REQUESTS_PER_GAME = 5000;
 
-export const createGame = async (repo: GameRepository, character: Character, now: number) => {
-  const { state, events } = applyAction(
+export const FIRST_FLOOR = 1;
+
+const applyAll = (state: GameState, actions: GameStateAction[], now: number) =>
+  actions.reduce(
+    (acc, action) => {
+      const result = applyAction(acc.state, action, { now });
+      return { state: result.state, events: [...acc.events, ...result.events] };
+    },
+    { state, events: [] as GameEvent[] },
+  );
+
+export const createGame = async (
+  repo: GameRepository,
+  character: Character,
+  now: number,
+  seed: string = randomUUID(),
+): Promise<StoredGame> => {
+  const { state, events } = applyAll(
     createInitialGameState(now),
-    { type: "CREATE_CHARACTER", payload: character },
-    { now },
+    [
+      { type: "CREATE_CHARACTER", payload: character },
+      { type: "ENTER_FLOOR", payload: { floorNumber: FIRST_FLOOR, seed } },
+    ],
+    now,
   );
   return repo.create(state, events);
+};
+
+export const restoreGame = async (
+  repo: GameRepository,
+  state: GameState,
+  now: number,
+): Promise<StoredGame> => {
+  const loaded = applyAll(
+    createInitialGameState(now),
+    [{ type: "LOAD_STATE", payload: state }],
+    now,
+  );
+  return repo.create(loaded.state, loaded.events);
 };
 
 export const getGame = async (
@@ -41,25 +76,25 @@ export const getEvents = async (
   return repo.events(id);
 };
 
-export const performIntent = async (
+export type IntentsOutcome = StoredGame & Pick<IntentsResult, "events" | "rejected">;
+
+export const performIntents = async (
   repo: GameRepository,
   id: string,
   expectedVersion: number,
-  intent: Intent,
+  intents: Intent[],
   now: number,
-): Promise<StoredGame & { events: GameEvent[] }> => {
+): Promise<IntentsOutcome> => {
   const game = await getGame(repo, id, now);
   if (game.version !== expectedVersion) throw new StaleVersion(game);
-  if (game.version >= MAX_ACTIONS_PER_GAME) {
-    throw new IntentRejected("This game has reached its length limit");
-  }
+  if (game.version >= MAX_REQUESTS_PER_GAME) throw new IntentRejected("length_limit");
 
-  const { state, events } = applyAction(game.state, intentToAction(game.state, intent), { now });
-  if (events.length === 0) throw new NoEffect();
+  const { state, events, rejected } = applyIntents(game.state, intents, { now });
+  if (rejected?.index === 0) throw new IntentRejected(rejected.reason);
 
   try {
     const saved = await repo.save(id, expectedVersion, state, events);
-    return { ...saved, events };
+    return { ...saved, events, rejected };
   } catch (err) {
     if (err instanceof VersionConflict) throw new StaleVersion(await getGame(repo, id, now));
     throw err;

@@ -1,46 +1,51 @@
-import { MapCell } from "../../atoms/MapCell";
-import type { CellType } from "../../atoms/MapCell";
+import type { CSSProperties } from "react";
+import type { DungeonFloor, MapTile, Position } from "@grunberg/engine";
+import { MapCell, type CellType } from "../../atoms/MapCell";
 import styles from "./Minimap.module.css";
 
 export interface MinimapProps {
-  gridSize?: number;
-  playerPosition?: { x: number; y: number };
-  title?: string;
+  floor: DungeonFloor | null;
+  position: Position;
+  viewSize?: number;
 }
 
-export const Minimap = ({ gridSize = 200, playerPosition = { x: 3, y: 3 } }: MinimapProps) => {
-  const generateMinimap = () => {
-    const grid = [];
+const cellType = (tile: MapTile | undefined): CellType => {
+  if (!tile?.explored) return "unexplored";
+  if (tile.type === "wall") return "wall";
+  if (tile.type === "stairs_down") return "stairs";
+  return "explored";
+};
 
-    for (let y = 0; y < gridSize; y++) {
-      for (let x = 0; x < gridSize; x++) {
-        let cellType: CellType;
-
-        const isWall = y === 0 || y === gridSize - 1 || x === 0 || x === gridSize - 1;
-        const isPlayer = x === playerPosition.x && y === playerPosition.y;
-        // Placeholder pattern until real floors exist. Must be deterministic:
-        // random values would differ between server and client renders.
-        const isExplored = (x * 31 + y * 17) % 7 < 3;
-
-        if (isPlayer) {
-          cellType = "player";
-        } else if (isWall) {
-          cellType = "wall";
-        } else if (isExplored) {
-          cellType = "explored";
-        } else {
-          cellType = "unexplored";
-        }
-
-        grid.push(<MapCell key={`${x}-${y}`} type={cellType} x={x} y={y} />);
-      }
+export const Minimap = ({ floor, position, viewSize = 15 }: MinimapProps) => {
+  const half = Math.floor(viewSize / 2);
+  const cells = [];
+  for (let row = 0; row < viewSize; row++) {
+    for (let col = 0; col < viewSize; col++) {
+      const x = position.x - half + col;
+      const y = position.y - half + row;
+      const isPlayer = x === position.x && y === position.y;
+      cells.push(
+        <MapCell
+          key={`${col}-${row}`}
+          type={isPlayer ? "player" : cellType(floor?.tiles[y]?.[x])}
+        />,
+      );
     }
-    return grid;
-  };
+  }
 
   return (
-    <div className={styles.minimap}>
-      <div className={styles["minimap__grid"]}>{generateMinimap()}</div>
+    <div
+      className={styles.minimap}
+      role="img"
+      aria-label={`Minimapa: piętro ${position.floor}, pozycja ${position.x}, ${position.y}`}
+    >
+      <div
+        className={styles["minimap__grid"]}
+        style={{ "--minimap-size": viewSize } as CSSProperties}
+        aria-hidden="true"
+      >
+        {cells}
+      </div>
     </div>
   );
 };
